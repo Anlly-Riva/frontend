@@ -152,10 +152,10 @@ const DashboardSuperAdminPage = () => {
                                 tick={{ fill: '#6B7280', fontSize: 12 }}
                             />
                             <Tooltip
-                                contentStyle={{ 
-                                    borderRadius: '8px', 
-                                    border: 'none', 
-                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' 
+                                contentStyle={{
+                                    borderRadius: '8px',
+                                    border: 'none',
+                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                                 }}
                             />
                             <Bar dataKey="value" fill="#3B82F6" radius={[8, 8, 0, 0]} />
@@ -192,19 +192,18 @@ const DashboardSuperAdminPage = () => {
                 <ChartContainer title="Últimos Restaurantes Creados">
                     <div className="space-y-3 overflow-y-auto h-full pr-2">
                         {restaurantes.slice(0, 5).map((rest) => (
-                            <div 
-                                key={rest.id_restaurante} 
+                            <div
+                                key={rest.id_restaurante}
                                 className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-100 last:border-0"
                             >
                                 <div className="flex-1">
                                     <p className="text-sm font-medium text-gray-900">{rest.razon_social}</p>
                                     <p className="text-xs text-gray-500">RUC: {rest.ruc}</p>
                                 </div>
-                                <span className={`text-xs font-medium px-3 py-1 rounded-full ${
-                                    rest.estado === 1 
-                                        ? 'bg-green-100 text-green-700' 
-                                        : 'bg-red-100 text-red-700'
-                                }`}>
+                                <span className={`text-xs font-medium px-3 py-1 rounded-full ${rest.estado === 1
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-red-100 text-red-700'
+                                    }`}>
                                     {rest.estado === 1 ? 'Activo' : 'Inactivo'}
                                 </span>
                             </div>
@@ -221,8 +220,8 @@ const DashboardSuperAdminPage = () => {
                         {usuarios.slice(0, 5).map((user) => {
                             const rol = roles.find(r => r.idPerfil === user.id_perfil);
                             return (
-                                <div 
-                                    key={user.id_usuario} 
+                                <div
+                                    key={user.id_usuario}
                                     className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-100 last:border-0"
                                 >
                                     <div className="flex items-center gap-3 flex-1">
@@ -236,11 +235,10 @@ const DashboardSuperAdminPage = () => {
                                             <p className="text-xs text-gray-500">{rol?.nombrePerfil || 'Sin rol'}</p>
                                         </div>
                                     </div>
-                                    <span className={`text-xs font-medium px-3 py-1 rounded-full ${
-                                        user.estado === 1 
-                                            ? 'bg-green-100 text-green-700' 
-                                            : 'bg-red-100 text-red-700'
-                                    }`}>
+                                    <span className={`text-xs font-medium px-3 py-1 rounded-full ${user.estado === 1
+                                        ? 'bg-green-100 text-green-700'
+                                        : 'bg-red-100 text-red-700'
+                                        }`}>
                                         {user.estado === 1 ? 'Activo' : 'Inactivo'}
                                     </span>
                                 </div>
@@ -252,33 +250,6 @@ const DashboardSuperAdminPage = () => {
                     </div>
                 </ChartContainer>
             </div>
-
-            {/* Roles activos */}
-            <ChartContainer title="Roles del Sistema">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {roles.map((rol, index) => (
-                        <div 
-                            key={rol.idPerfil}
-                            className="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
-                        >
-                            <div className="flex items-center justify-between mb-2">
-                                <h3 className="font-semibold text-gray-900">{rol.nombrePerfil}</h3>
-                                <span 
-                                    className="w-3 h-3 rounded-full"
-                                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                                ></span>
-                            </div>
-                            <p className="text-2xl font-bold" style={{ color: COLORS[index % COLORS.length] }}>
-                                {usuarios.filter(u => u.id_perfil === rol.idPerfil).length}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1">usuarios asignados</p>
-                        </div>
-                    ))}
-                    {roles.length === 0 && (
-                        <p className="text-center text-gray-400 py-8 col-span-4">No hay roles configurados</p>
-                    )}
-                </div>
-            </ChartContainer>
         </div>
     );
 };
