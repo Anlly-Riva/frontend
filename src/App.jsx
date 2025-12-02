@@ -39,7 +39,7 @@ function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/login" element={<LoginPage />} />
+            <Route path="/superadmin/login" element={<LoginPage />} />
 
             {/* SuperAdmin Routes */}
             <Route path="/superadmin/login" element={<LoginSuperAdminPage />} />
