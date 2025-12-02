@@ -39,8 +39,6 @@ function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/login" element={<LoginPage />} />
-
             {/* SuperAdmin Routes */}
             <Route path="/superadmin/login" element={<LoginSuperAdminPage />} />
             <Route path="/superadmin" element={<LayoutSuperAdmin />}>
@@ -67,7 +65,11 @@ function App() {
               <Route path="accesos" element={<AccesosPage />} />
             </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
+            {/* Redirect /login to /superadmin/login */}
+            <Route path="/login" element={<Navigate to="/superadmin/login" replace />} />
+            
+            {/* Catch all - redirect to home or superadmin login based on auth */}
+            <Route path="*" element={<Navigate to="/superadmin/login" replace />} />
           </Routes>
         </BrowserRouter>
         <Toaster position="top-right" />
