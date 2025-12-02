@@ -31,12 +31,12 @@ const LoginSuperAdminPage = () => {
 
             const data = response.data;
 
-            // Verificar si tiene permisos de SuperAdmin (rolId >= 8)
-            if (data.rolId && data.rolId >= 8) {
-                // Guardar datos temporalmente
+            // Verificar si tiene permisos de SuperAdmin (idPerfil >= 8)
+            if (data.idPerfil && data.idPerfil >= 8) {
+                // ✅ Es SuperAdmin - avanzar al Paso 2 para validación de token
                 setUserData(data);
-                setToken(''); // Limpiar el token - el usuario debe copiarlo del email
-                setStep(2); // Avanzar al paso 2
+                setToken('');
+                setStep(2);
                 toast.success(`¡Bienvenido ${data.nombreUsuario}! Revisa tu correo para obtener el token.`);
             } else {
                 toast.error('Acceso denegado: No tienes permisos de SuperAdmin');
@@ -45,6 +45,8 @@ const LoginSuperAdminPage = () => {
             console.error('Error en login:', error);
             if (error.response?.status === 401) {
                 toast.error('Usuario o contraseña incorrectos');
+            } else if (error.response?.status === 403) {
+                toast.error('Acceso denegado: No tienes permisos de SuperAdmin');
             } else {
                 toast.error('Error al iniciar sesión');
             }
@@ -64,14 +66,26 @@ const LoginSuperAdminPage = () => {
 
         setIsLoading(true);
         try {
-            const response = await superadminAuthAPI.loginWithToken(token);
+            // 🔍 VERIFICACIÓN: Usamos el token para intentar acceder a un recurso protegido
+            // Esto confirma que el token es válido y tiene permisos
+            await axios.get('/restful/superadmin/estadisticas', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            // Si la petición anterior no falló, el token es válido
 
             // Guardar datos del SuperAdmin
-            localStorage.setItem('superadminToken', response.data.token);
-            localStorage.setItem('superadminUser', JSON.stringify(response.data));
+            localStorage.setItem('superadminToken', token);
+            // Usamos los datos que ya teníamos del paso 1
+            if (userData) {
+                localStorage.setItem('superadminUser', JSON.stringify(userData));
+            }
 
             toast.success(`¡Acceso concedido! Bienvenido al Panel SuperAdmin`);
             navigate('/superadmin');
+
         } catch (error) {
             console.error('Error en validación de token:', error);
             if (error.response?.status === 403) {
@@ -79,7 +93,9 @@ const LoginSuperAdminPage = () => {
             } else if (error.response?.status === 401) {
                 toast.error('Token inválido o expirado');
             } else {
-                toast.error('Error al validar el token');
+                // Si falla estadísticas por otra razón, intentamos asumir que es válido si el error no es de auth
+                // Pero por seguridad, mejor mostramos error
+                toast.error('Error al validar el token. Inténtalo de nuevo.');
             }
         } finally {
             setIsLoading(false);
