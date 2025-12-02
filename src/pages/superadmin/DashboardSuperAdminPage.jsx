@@ -64,7 +64,7 @@ const DashboardSuperAdminPage = () => {
     // Datos para gráfico de usuarios por rol
     const usuariosPorRol = roles.map(rol => ({
         name: rol.nombrePerfil,
-        value: usuarios.filter(u => u.id_perfil === rol.idPerfil).length
+        value: usuarios.filter(u => u.rolId === rol.idPerfil || u.id_perfil === rol.idPerfil).length
     })).filter(item => item.value > 0);
 
     // Colores para el gráfico

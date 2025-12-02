@@ -50,8 +50,15 @@ export const restaurantesAPI = {
 // ============================================
 export const usuariosAPI = {
     getUsuarios: async () => {
-        const response = await api.get('/restful/superadmin/usuarios');
-        return response.data;
+        // Intentar obtener todos los usuarios (activos e inactivos)
+        try {
+            const response = await api.get('/restful/superadmin/usuarios?incluirInactivos=true');
+            return response.data;
+        } catch (error) {
+            // Si el parámetro no funciona, intentar sin él
+            const response = await api.get('/restful/superadmin/usuarios');
+            return response.data;
+        }
     },
     createUsuario: async (usuario) => {
         const response = await api.post('/restful/superadmin/usuarios', usuario);

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { FaUserPlus, FaEdit, FaTrash, FaSearch, FaUserShield, FaKey } from 'react-icons/fa';
+import { FaUserPlus, FaEdit, FaTrash, FaSearch, FaUserShield, FaKey, FaToggleOn, FaToggleOff } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import { superadminApi } from '../../services/superadminApi';
 import { Card } from '../../components/superadmin/DashboardComponents';
@@ -50,6 +50,26 @@ const UsersPage = () => {
         },
         onError: (error) => {
             toast.error('Error al eliminar usuario: ' + error.message);
+        }
+    });
+
+    // Toggle Estado Mutation
+    const toggleEstadoMutation = useMutation({
+        mutationFn: async (user) => {
+            const nuevoEstado = user.estado === 1 ? 0 : 1;
+            return superadminApi.updateUsuario({
+                ...user,
+                idUsuario: user.idUsuario,
+                estado: nuevoEstado
+            });
+        },
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries(['users']);
+            const nuevoEstado = variables.estado === 1 ? 0 : 1;
+            toast.success(`Usuario ${nuevoEstado === 1 ? 'activado' : 'desactivado'} correctamente`);
+        },
+        onError: (error) => {
+            toast.error('Error al cambiar estado: ' + error.message);
         }
     });
 
@@ -131,14 +151,23 @@ const UsersPage = () => {
                                     </td>
                                     <td className="p-4">
                                         <span className={`px-2 py-1 rounded text-xs font-medium border ${user.estado === 1
-                                                ? 'bg-green-50 text-green-700 border-green-100'
-                                                : 'bg-gray-100 text-gray-600 border-gray-200'
+                                            ? 'bg-green-50 text-green-700 border-green-100'
+                                            : 'bg-gray-100 text-gray-600 border-gray-200'
                                             }`}>
                                             {user.estado === 1 ? 'Activo' : 'Inactivo'}
                                         </span>
                                     </td>
                                     <td className="p-4 text-right">
                                         <div className="flex justify-end gap-2">
+                                            <button
+                                                onClick={() => toggleEstadoMutation.mutate(user)}
+                                                className={`p-2 hover:bg-gray-100 rounded transition-colors ${user.estado === 1 ? 'text-green-600 hover:text-green-700' : 'text-gray-400 hover:text-gray-600'
+                                                    }`}
+                                                title={user.estado === 1 ? 'Desactivar' : 'Activar'}
+                                                disabled={toggleEstadoMutation.isPending}
+                                            >
+                                                {user.estado === 1 ? <FaToggleOn size={20} /> : <FaToggleOff size={20} />}
+                                            </button>
                                             <button
                                                 onClick={() => { setEditingUser(user); setIsModalOpen(true); }}
                                                 className="p-2 hover:bg-gray-100 rounded text-gray-500 hover:text-blue-600 transition-colors"
@@ -236,8 +265,8 @@ const UsersPage = () => {
 
                             <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancelar</button>
-                                <button 
-                                    type="submit" 
+                                <button
+                                    type="submit"
                                     disabled={mutation.isPending}
                                     className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50"
                                 >
