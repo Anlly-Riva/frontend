@@ -11,62 +11,55 @@ const UsersPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const queryClient = useQueryClient();
 
-    // Fetch Users
-    const { data: users = [], isLoading } = useQuery({
-        queryKey: ['users'],
-        queryFn: superadminApi.getUsuarios
-    });
-
-    // Fetch Roles for selector
-    const { data: roles = [], isLoading: isLoadingRoles } = useQuery({
-        queryKey: ['roles'],
-        queryFn: superadminApi.getRoles
+    // Fetch Super Admins
+    const { data: superAdmins = [], isLoading } = useQuery({
+        queryKey: ['superAdmins'],
+        queryFn: superadminApi.getSuperAdmins
     });
 
     // Create/Update Mutation
     const mutation = useMutation({
         mutationFn: (userData) => {
             return editingUser
-                ? superadminApi.updateUsuario(userData)
-                : superadminApi.createUsuario(userData);
+                ? superadminApi.updateSuperAdmin(userData.id_superadmin, userData)
+                : superadminApi.createSuperAdmin(userData);
         },
         onSuccess: () => {
-            queryClient.invalidateQueries(['users']);
+            queryClient.invalidateQueries(['superAdmins']);
             setIsModalOpen(false);
             setEditingUser(null);
-            toast.success(editingUser ? 'Usuario actualizado' : 'Usuario creado');
+            toast.success(editingUser ? 'Super Admin actualizado' : 'Super Admin creado');
         },
         onError: (error) => {
-            toast.error('Error al guardar usuario: ' + error.message);
+            toast.error('Error al guardar super admin: ' + error.message);
         }
     });
 
     // Delete Mutation
     const deleteMutation = useMutation({
-        mutationFn: superadminApi.deleteUsuario,
+        mutationFn: superadminApi.deleteSuperAdmin,
         onSuccess: () => {
-            queryClient.invalidateQueries(['users']);
-            toast.success('Usuario eliminado');
+            queryClient.invalidateQueries(['superAdmins']);
+            toast.success('Super Admin eliminado');
         },
         onError: (error) => {
-            toast.error('Error al eliminar usuario: ' + error.message);
+            toast.error('Error al eliminar super admin: ' + error.message);
         }
     });
 
     // Toggle Estado Mutation
     const toggleEstadoMutation = useMutation({
-        mutationFn: async (user) => {
-            const nuevoEstado = user.estado === 1 ? 0 : 1;
-            return superadminApi.updateUsuario({
-                ...user,
-                idUsuario: user.idUsuario,
+        mutationFn: async (superAdmin) => {
+            const nuevoEstado = superAdmin.estado === 1 ? 0 : 1;
+            return superadminApi.updateSuperAdmin(superAdmin.id_superadmin, {
+                ...superAdmin,
                 estado: nuevoEstado
             });
         },
         onSuccess: (data, variables) => {
-            queryClient.invalidateQueries(['users']);
+            queryClient.invalidateQueries(['superAdmins']);
             const nuevoEstado = variables.estado === 1 ? 0 : 1;
-            toast.success(`Usuario ${nuevoEstado === 1 ? 'activado' : 'desactivado'} correctamente`);
+            toast.success(`Super Admin ${nuevoEstado === 1 ? 'activado' : 'desactivado'} correctamente`);
         },
         onError: (error) => {
             toast.error('Error al cambiar estado: ' + error.message);
@@ -79,29 +72,33 @@ const UsersPage = () => {
         const data = Object.fromEntries(formData.entries());
 
         if (editingUser) {
-            data.idUsuario = editingUser.idUsuario;
+            data.id_superadmin = editingUser.id_superadmin;
+            // No enviar password si está vacío al editar
+            if (!data.password) {
+                delete data.password;
+            }
         }
 
         mutation.mutate(data);
     };
 
-    const filteredUsers = users.filter(user =>
-        user.nombreUsuario?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.nombreUsuarioLogin?.toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredSuperAdmins = superAdmins.filter(sa =>
+        sa.nombres?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        sa.email?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Gestión de Usuarios</h1>
-                    <p className="text-gray-500">Administra los usuarios y sus accesos al sistema.</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Gestión de Super Admins</h1>
+                    <p className="text-gray-500">Administra los super administradores del sistema.</p>
                 </div>
                 <button
                     onClick={() => { setEditingUser(null); setIsModalOpen(true); }}
                     className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
                 >
-                    <FaUserPlus /> Nuevo Usuario
+                    <FaUserPlus /> Nuevo Super Admin
                 </button>
             </div>
 
@@ -110,7 +107,7 @@ const UsersPage = () => {
                     <FaSearch className="text-gray-400" />
                     <input
                         type="text"
-                        placeholder="Buscar por nombre o usuario..."
+                        placeholder="Buscar por nombre o email..."
                         className="bg-transparent border-none outline-none w-full text-sm"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -121,8 +118,8 @@ const UsersPage = () => {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="border-b border-gray-100 text-gray-500 text-sm">
-                                <th className="p-4 font-medium">Usuario</th>
-                                <th className="p-4 font-medium">Nombre Completo</th>
+                                <th className="p-4 font-medium">Email</th>
+                                <th className="p-4 font-medium">Nombre</th>
                                 <th className="p-4 font-medium">Rol</th>
                                 <th className="p-4 font-medium">Estado</th>
                                 <th className="p-4 font-medium text-right">Acciones</th>
@@ -131,45 +128,48 @@ const UsersPage = () => {
                         <tbody className="divide-y divide-gray-50">
                             {isLoading ? (
                                 <tr><td colSpan="5" className="p-4 text-center">Cargando...</td></tr>
-                            ) : filteredUsers.length === 0 ? (
-                                <tr><td colSpan="5" className="p-4 text-center text-gray-500">No se encontraron usuarios</td></tr>
-                            ) : filteredUsers.map((user) => (
-                                <tr key={user.idUsuario} className="hover:bg-gray-50 transition-colors">
+                            ) : filteredSuperAdmins.length === 0 ? (
+                                <tr><td colSpan="5" className="p-4 text-center text-gray-500">No se encontraron super admins</td></tr>
+                            ) : filteredSuperAdmins.map((superAdmin) => (
+                                <tr key={superAdmin.id_superadmin} className="hover:bg-gray-50 transition-colors">
                                     <td className="p-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-bold text-xs">
-                                                {user.nombreUsuarioLogin?.substring(0, 2).toUpperCase() || 'U'}
+                                                {superAdmin.email?.substring(0, 2).toUpperCase() || 'SA'}
                                             </div>
-                                            <span className="font-medium text-gray-900">{user.nombreUsuarioLogin}</span>
+                                            <span className="font-medium text-gray-900">{superAdmin.email}</span>
                                         </div>
                                     </td>
-                                    <td className="p-4 text-gray-600">{user.nombreUsuario} {user.apellidos}</td>
+                                    <td className="p-4 text-gray-600">{superAdmin.nombres}</td>
                                     <td className="p-4">
-                                        <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium border border-blue-100">
-                                            {roles.find(r => r.idPerfil === user.rolId)?.nombrePerfil || 'Sin Rol'}
+                                        <span className={`px-2 py-1 rounded text-xs font-medium border ${superAdmin.rol === 'MASTER' ? 'bg-purple-50 text-purple-700 border-purple-100' :
+                                                superAdmin.rol === 'SOPORTE' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                                    'bg-green-50 text-green-700 border-green-100'
+                                            }`}>
+                                            {superAdmin.rol}
                                         </span>
                                     </td>
                                     <td className="p-4">
-                                        <span className={`px-2 py-1 rounded text-xs font-medium border ${user.estado === 1
+                                        <span className={`px-2 py-1 rounded text-xs font-medium border ${superAdmin.estado === 1
                                             ? 'bg-green-50 text-green-700 border-green-100'
                                             : 'bg-gray-100 text-gray-600 border-gray-200'
                                             }`}>
-                                            {user.estado === 1 ? 'Activo' : 'Inactivo'}
+                                            {superAdmin.estado === 1 ? 'Activo' : 'Inactivo'}
                                         </span>
                                     </td>
                                     <td className="p-4 text-right">
                                         <div className="flex justify-end gap-2">
                                             <button
-                                                onClick={() => toggleEstadoMutation.mutate(user)}
-                                                className={`p-2 hover:bg-gray-100 rounded transition-colors ${user.estado === 1 ? 'text-green-600 hover:text-green-700' : 'text-gray-400 hover:text-gray-600'
+                                                onClick={() => toggleEstadoMutation.mutate(superAdmin)}
+                                                className={`p-2 hover:bg-gray-100 rounded transition-colors ${superAdmin.estado === 1 ? 'text-green-600 hover:text-green-700' : 'text-gray-400 hover:text-gray-600'
                                                     }`}
-                                                title={user.estado === 1 ? 'Desactivar' : 'Activar'}
+                                                title={superAdmin.estado === 1 ? 'Desactivar' : 'Activar'}
                                                 disabled={toggleEstadoMutation.isPending}
                                             >
-                                                {user.estado === 1 ? <FaToggleOn size={20} /> : <FaToggleOff size={20} />}
+                                                {superAdmin.estado === 1 ? <FaToggleOn size={20} /> : <FaToggleOff size={20} />}
                                             </button>
                                             <button
-                                                onClick={() => { setEditingUser(user); setIsModalOpen(true); }}
+                                                onClick={() => { setEditingUser(superAdmin); setIsModalOpen(true); }}
                                                 className="p-2 hover:bg-gray-100 rounded text-gray-500 hover:text-blue-600 transition-colors"
                                                 title="Editar"
                                             >
@@ -177,8 +177,8 @@ const UsersPage = () => {
                                             </button>
                                             <button
                                                 onClick={() => {
-                                                    if (window.confirm('¿Estás seguro de eliminar este usuario?')) {
-                                                        deleteMutation.mutate(user.idUsuario);
+                                                    if (window.confirm('¿Estás seguro de eliminar este super admin?')) {
+                                                        deleteMutation.mutate(superAdmin.id_superadmin);
                                                     }
                                                 }}
                                                 className="p-2 hover:bg-gray-100 rounded text-gray-500 hover:text-red-600 transition-colors"
@@ -201,64 +201,57 @@ const UsersPage = () => {
                     <div className="bg-white rounded-xl shadow-xl w-full max-w-lg m-4 overflow-hidden animate-in fade-in zoom-in duration-200">
                         <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                             <h2 className="text-lg font-bold text-gray-900">
-                                {editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}
+                                {editingUser ? 'Editar Super Admin' : 'Nuevo Super Admin'}
                             </h2>
                             <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">✕</button>
                         </div>
 
                         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
-                                    <input name="nombreUsuario" defaultValue={editingUser?.nombreUsuario} required className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Apellidos</label>
-                                    <input name="apellidos" defaultValue={editingUser?.apellidos} required className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none" />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">DNI</label>
-                                    <input name="dniUsuario" defaultValue={editingUser?.dniUsuario} required className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                                    <input name="telefono" defaultValue={editingUser?.telefono} className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none" />
-                                </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
+                                <input name="nombres" defaultValue={editingUser?.nombres} required className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none" />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Usuario (Login)</label>
-                                <input name="nombreUsuarioLogin" defaultValue={editingUser?.nombreUsuarioLogin} required className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none" />
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input
+                                    type="email"
+                                    name="email"
+                                    defaultValue={editingUser?.email}
+                                    required
+                                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                                />
                             </div>
 
-                            {!editingUser && (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-                                    <div className="relative">
-                                        <FaKey className="absolute left-3 top-3 text-gray-400" />
-                                        <input type="password" name="contrasena" required className="w-full p-2 pl-10 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="••••••••" />
-                                    </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Contraseña {editingUser && '(dejar vacío para mantener)'}
+                                </label>
+                                <div className="relative">
+                                    <FaKey className="absolute left-3 top-3 text-gray-400" />
+                                    <input
+                                        type="password"
+                                        name="password"
+                                        required={!editingUser}
+                                        className="w-full p-2 pl-10 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                                        placeholder="••••••••"
+                                    />
                                 </div>
-                            )}
+                            </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
                                 <div className="relative">
                                     <FaUserShield className="absolute left-3 top-3 text-gray-400" />
-                                    <select name="rolId" defaultValue={editingUser?.rolId || ''} required className="w-full p-2 pl-10 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white">
-                                        <option value="">Seleccionar Rol...</option>
-                                        {isLoadingRoles ? (
-                                            <option disabled>Cargando roles...</option>
-                                        ) : roles.length === 0 ? (
-                                            <option disabled>No hay roles disponibles</option>
-                                        ) : (
-                                            roles.map(role => (
-                                                <option key={role.idPerfil} value={role.idPerfil}>{role.nombrePerfil}</option>
-                                            ))
-                                        )}
+                                    <select
+                                        name="rol"
+                                        defaultValue={editingUser?.rol || 'SOPORTE'}
+                                        required
+                                        className="w-full p-2 pl-10 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white"
+                                    >
+                                        <option value="MASTER">MASTER</option>
+                                        <option value="SOPORTE">SOPORTE</option>
+                                        <option value="VENTAS">VENTAS</option>
                                     </select>
                                 </div>
                             </div>
@@ -270,7 +263,7 @@ const UsersPage = () => {
                                     disabled={mutation.isPending}
                                     className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50"
                                 >
-                                    {mutation.isPending ? 'Guardando...' : (editingUser ? 'Guardar Cambios' : 'Crear Usuario')}
+                                    {mutation.isPending ? 'Guardando...' : (editingUser ? 'Guardar Cambios' : 'Crear Super Admin')}
                                 </button>
                             </div>
                         </form>

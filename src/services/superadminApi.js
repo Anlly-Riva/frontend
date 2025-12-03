@@ -6,6 +6,9 @@ const api = axiosInstance;
 // AUTENTICACIÓN SUPERADMIN
 // ============================================
 export const superadminAuthAPI = {
+    // Paso 1: Enviar credenciales para recibir token por correo
+    initiateLogin: (email, password) => api.post('/restful/superadmin/auth/initiate-login', { email, password }),
+    // Paso 2: Verificar token recibido
     loginWithToken: (token) => api.post('/restful/superadmin/login', { token }),
     getEstadisticas: () => api.get('/restful/superadmin/estadisticas'),
 };
@@ -46,30 +49,27 @@ export const restaurantesAPI = {
 };
 
 // ============================================
-// GESTIÓN DE USUARIOS
+// GESTIÓN DE SUPER ADMINS (nueva tabla)
 // ============================================
-export const usuariosAPI = {
-    getUsuarios: async () => {
-        // Intentar obtener todos los usuarios (activos e inactivos)
-        try {
-            const response = await api.get('/restful/superadmin/usuarios?incluirInactivos=true');
-            return response.data;
-        } catch (error) {
-            // Si el parámetro no funciona, intentar sin él
-            const response = await api.get('/restful/superadmin/usuarios');
-            return response.data;
-        }
-    },
-    createUsuario: async (usuario) => {
-        const response = await api.post('/restful/superadmin/usuarios', usuario);
+export const superAdminsAPI = {
+    getAll: async () => {
+        const response = await api.get('/restful/superadmin/super-admins');
         return response.data;
     },
-    updateUsuario: async (usuario) => {
-        const response = await api.put(`/restful/superadmin/usuarios/${usuario.idUsuario}`, usuario);
+    getById: async (id) => {
+        const response = await api.get(`/restful/superadmin/super-admins/${id}`);
         return response.data;
     },
-    deleteUsuario: async (id) => {
-        await api.delete(`/restful/superadmin/usuarios/${id}`);
+    create: async (data) => {
+        const response = await api.post('/restful/superadmin/super-admins', data);
+        return response.data;
+    },
+    update: async (id, data) => {
+        const response = await api.put(`/restful/superadmin/super-admins/${id}`, data);
+        return response.data;
+    },
+    delete: async (id) => {
+        await api.delete(`/restful/superadmin/super-admins/${id}`);
     },
 };
 
@@ -77,7 +77,8 @@ export const usuariosAPI = {
 // API UNIFICADA (superadminApi)
 // ============================================
 export const superadminApi = {
-    // Auth & Dashboard
+    //// Auth & Dashboard
+    initiateLogin: superadminAuthAPI.initiateLogin,
     loginWithToken: superadminAuthAPI.loginWithToken,
     getEstadisticas: async () => {
         const response = await superadminAuthAPI.getEstadisticas();
@@ -125,9 +126,24 @@ export const superadminApi = {
         await restaurantesAPI.delete(id);
     },
 
-    // Usuarios - Ya estaban correctos
-    getUsuarios: usuariosAPI.getUsuarios,
-    createUsuario: usuariosAPI.createUsuario,
-    updateUsuario: usuariosAPI.updateUsuario,
-    deleteUsuario: usuariosAPI.deleteUsuario,
+    // Super Admins - NUEVO
+    getSuperAdmins: async () => {
+        const response = await superAdminsAPI.getAll();
+        return response.data;
+    },
+    getSuperAdminById: async (id) => {
+        const response = await superAdminsAPI.getById(id);
+        return response.data;
+    },
+    createSuperAdmin: async (data) => {
+        const response = await superAdminsAPI.create(data);
+        return response.data;
+    },
+    updateSuperAdmin: async (id, data) => {
+        const response = await superAdminsAPI.update(id, data);
+        return response.data;
+    },
+    deleteSuperAdmin: async (id) => {
+        await superAdminsAPI.delete(id);
+    },
 };

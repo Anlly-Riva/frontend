@@ -1,13 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-    FaStore,
-    FaUsers,
-    FaUserShield,
-    FaChartLine,
-    FaExclamationTriangle
-} from 'react-icons/fa';
-import {
     BarChart,
     Bar,
     XAxis,
@@ -17,9 +10,9 @@ import {
     ResponsiveContainer,
     PieChart,
     Pie,
-    Cell,
-    Legend
+    Cell
 } from 'recharts';
+import { FaStore, FaUsers, FaUserShield, FaChartLine } from 'react-icons/fa';
 import { superadminApi } from '../../services/superadminApi';
 import { StatCard, ChartContainer } from '../../components/superadmin/DashboardComponents';
 
@@ -37,10 +30,10 @@ const DashboardSuperAdminPage = () => {
         queryFn: superadminApi.getRestaurantes
     });
 
-    // Cargar usuarios
-    const { data: usuarios = [], isLoading: loadingUsuarios } = useQuery({
-        queryKey: ['users'],
-        queryFn: superadminApi.getUsuarios
+    // Cargar super admins (antes usuarios)
+    const { data: superAdmins = [], isLoading: loadingSuperAdmins } = useQuery({
+        queryKey: ['superAdmins'],
+        queryFn: superadminApi.getSuperAdmins
     });
 
     // Cargar roles
@@ -57,15 +50,16 @@ const DashboardSuperAdminPage = () => {
 
     // Calcular estadísticas
     const restaurantesActivos = restaurantes.filter(r => r.estado === 1).length;
-    const usuariosActivos = usuarios.filter(u => u.estado === 1).length;
+    const superAdminsActivos = superAdmins.filter(sa => sa.estado === 1).length;
     const rolesActivos = roles.filter(r => r.estado === 1).length;
     const modulosActivos = modulos.filter(m => m.estado === 1).length;
 
-    // Datos para gráfico de usuarios por rol
-    const usuariosPorRol = roles.map(rol => ({
-        name: rol.nombrePerfil,
-        value: usuarios.filter(u => u.rolId === rol.idPerfil || u.id_perfil === rol.idPerfil).length
-    })).filter(item => item.value > 0);
+    // Datos para gráfico de super admins por rol
+    const superAdminsPorRol = [
+        { name: 'MASTER', value: superAdmins.filter(sa => sa.rol === 'MASTER').length },
+        { name: 'SOPORTE', value: superAdmins.filter(sa => sa.rol === 'SOPORTE').length },
+        { name: 'VENTAS', value: superAdmins.filter(sa => sa.rol === 'VENTAS').length }
+    ].filter(item => item.value > 0);
 
     // Colores para el gráfico
     const COLORS = ['#3B82F6', '#F59E0B', '#10B981', '#8B5CF6', '#EF4444', '#06B6D4'];
@@ -76,7 +70,7 @@ const DashboardSuperAdminPage = () => {
         { name: 'Inactivos', value: restaurantes.length - restaurantesActivos }
     ];
 
-    if (loadingRestaurantes || loadingUsuarios || loadingRoles || loadingModulos) {
+    if (loadingRestaurantes || loadingSuperAdmins || loadingRoles || loadingModulos) {
         return (
             <div className="flex justify-center items-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
@@ -90,7 +84,7 @@ const DashboardSuperAdminPage = () => {
             <div>
                 <h1 className="text-2xl font-bold text-gray-900">Panel de Control - Superadmin</h1>
                 <p className="text-gray-500 mt-1">
-                    Vista general del sistema: restaurantes, usuarios y configuración.
+                    Vista general del sistema: restaurantes, super admins y configuración.
                 </p>
             </div>
 
@@ -105,10 +99,10 @@ const DashboardSuperAdminPage = () => {
                     color="blue"
                 />
                 <StatCard
-                    title="Usuarios"
-                    value={usuariosActivos}
-                    trend={`${usuarios.length} totales`}
-                    trendLabel="Usuarios registrados"
+                    title="Super Admins"
+                    value={superAdminsActivos}
+                    trend={`${superAdmins.length} totales`}
+                    trendLabel="Administradores del sistema"
                     icon={FaUsers}
                     color="green"
                 />
@@ -132,10 +126,10 @@ const DashboardSuperAdminPage = () => {
 
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Bar Chart - Usuarios por Rol */}
-                <ChartContainer title="Distribución de Usuarios por Rol">
+                {/* Bar Chart - Super Admins por Rol */}
+                <ChartContainer title="Distribución de Super Admins por Rol">
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={usuariosPorRol} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                        <BarChart data={superAdminsPorRol} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                             <XAxis
                                 dataKey="name"
@@ -214,38 +208,45 @@ const DashboardSuperAdminPage = () => {
                     </div>
                 </ChartContainer>
 
-                {/* Últimos Usuarios */}
-                <ChartContainer title="Últimos Usuarios Creados">
+                {/* Últimos Super Admins */}
+                <ChartContainer title="Últimos Super Admins Creados">
                     <div className="space-y-3 overflow-y-auto h-full pr-2">
-                        {usuarios.slice(0, 5).map((user) => {
-                            const rol = roles.find(r => r.idPerfil === user.id_perfil);
+                        {superAdmins.slice(0, 5).map((sa) => {
                             return (
                                 <div
-                                    key={user.id_usuario}
+                                    key={sa.id_superadmin}
                                     className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-100 last:border-0"
                                 >
                                     <div className="flex items-center gap-3 flex-1">
-                                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm">
-                                            {user.nombre_usuario_login?.substring(0, 2).toUpperCase() || 'U'}
+                                        <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-sm">
+                                            {sa.email?.substring(0, 2).toUpperCase() || 'SA'}
                                         </div>
                                         <div>
                                             <p className="text-sm font-medium text-gray-900">
-                                                {user.nombre_usuario} {user.apellido_usuario}
+                                                {sa.nombres}
                                             </p>
-                                            <p className="text-xs text-gray-500">{rol?.nombrePerfil || 'Sin rol'}</p>
+                                            <p className="text-xs text-gray-500">{sa.email}</p>
                                         </div>
                                     </div>
-                                    <span className={`text-xs font-medium px-3 py-1 rounded-full ${user.estado === 1
-                                        ? 'bg-green-100 text-green-700'
-                                        : 'bg-red-100 text-red-700'
-                                        }`}>
-                                        {user.estado === 1 ? 'Activo' : 'Inactivo'}
-                                    </span>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <span className={`text-xs font-medium px-2 py-1 rounded ${sa.rol === 'MASTER' ? 'bg-purple-100 text-purple-700' :
+                                                sa.rol === 'SOPORTE' ? 'bg-blue-100 text-blue-700' :
+                                                    'bg-green-100 text-green-700'
+                                            }`}>
+                                            {sa.rol}
+                                        </span>
+                                        <span className={`text-xs font-medium px-2 py-1 rounded ${sa.estado === 1
+                                            ? 'bg-green-100 text-green-700'
+                                            : 'bg-red-100 text-red-700'
+                                            }`}>
+                                            {sa.estado === 1 ? 'Activo' : 'Inactivo'}
+                                        </span>
+                                    </div>
                                 </div>
                             );
                         })}
-                        {usuarios.length === 0 && (
-                            <p className="text-center text-gray-400 py-8">No hay usuarios registrados</p>
+                        {superAdmins.length === 0 && (
+                            <p className="text-center text-gray-400 py-8">No hay super admins registrados</p>
                         )}
                     </div>
                 </ChartContainer>

@@ -1,56 +1,63 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { superadminAuthAPI } from '../../services/superadminApi';
-import axios from '../../config/axios';
+import { superadminApi } from '../../services/superadminApi';
 import { FaKey, FaShieldAlt, FaUser, FaLock } from 'react-icons/fa';
 
 const LoginSuperAdminPage = () => {
     const [step, setStep] = useState(1); // 1 = credenciales, 2 = token
-    const [credentials, setCredentials] = useState({ username: '', password: '' });
+    const [credentials, setCredentials] = useState({ email: '', password: '' });
     const [token, setToken] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [userData, setUserData] = useState(null);
     const navigate = useNavigate();
 
-    // Paso 1: Login con usuario y contraseña
+    // Paso 1: Login con email y contraseña
     const handleCredentialsSubmit = async (e) => {
         e.preventDefault();
 
-        if (!credentials.username.trim() || !credentials.password.trim()) {
+        if (!credentials.email.trim() || !credentials.password.trim()) {
             toast.error('Por favor completa todos los campos');
             return;
         }
 
+        console.log('=== INICIANDO LOGIN PASO 1 ===');
+        console.log('Email:', credentials.email);
+
         setIsLoading(true);
         try {
-            const response = await axios.post('/restful/usuarios/login', {
-                nombreUsuarioLogin: credentials.username,
-                contrasena: credentials.password
-            });
+            console.log('Llamando a initiateLogin...');
+            // Llamada al endpoint de inicio de sesión (envía correo)
+            const response = await superadminApi.initiateLogin(credentials.email, credentials.password);
 
-            const data = response.data;
+            console.log('=== RESPUESTA PASO 1 ===');
+            console.log('Response completa:', response);
+            console.log('Response.data:', response.data);
+            console.log('Response.status:', response.status);
 
-            // Verificar si tiene permisos de SuperAdmin (idPerfil >= 8)
-            if (data.idPerfil && data.idPerfil >= 8) {
-                // ✅ Es SuperAdmin - avanzar al Paso 2 para validación de token
-                setUserData(data);
-                setToken('');
-                setStep(2);
-                toast.success(`¡Bienvenido ${data.nombreUsuario}! Revisa tu correo para obtener el token.`);
-            } else {
-                toast.error('Acceso denegado: No tienes permisos de SuperAdmin');
-            }
+            // Asumimos que el backend devuelve datos básicos o mensaje de éxito
+            setUserData({ email: credentials.email });
+            setToken('');
+
+            console.log('Cambiando a paso 2...');
+            setStep(2);
+            toast.success('Credenciales válidas. Revisa tu correo para obtener el token.');
+
         } catch (error) {
-            console.error('Error en login:', error);
+            console.error('=== ERROR EN PASO 1 ===');
+            console.error('Error completo:', error);
+            console.error('Error.response:', error.response);
+            console.error('Error.message:', error.message);
+
             if (error.response?.status === 401) {
-                toast.error('Usuario o contraseña incorrectos');
+                toast.error('Credenciales incorrectas');
             } else if (error.response?.status === 403) {
-                toast.error('Acceso denegado: No tienes permisos de SuperAdmin');
+                toast.error('Acceso denegado: Cuenta inactiva o sin permisos');
             } else {
-                toast.error('Error al iniciar sesión');
+                toast.error('Error al iniciar sesión: ' + (error.response?.data?.message || error.message));
             }
         } finally {
+            console.log('Finalizando paso 1, isLoading = false');
             setIsLoading(false);
         }
     };
@@ -66,35 +73,41 @@ const LoginSuperAdminPage = () => {
 
         setIsLoading(true);
         try {
-            // 🔍 VERIFICACIÓN: Usamos el token para intentar acceder a un recurso protegido
-            // Esto confirma que el token es válido y tiene permisos
-            await axios.get('/restful/superadmin/estadisticas', {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            // Llamada al endpoint de verificación de token
+            const response = await superadminApi.loginWithToken(token);
 
-            // Si la petición anterior no falló, el token es válido
+            console.log('=== RESPUESTA DEL BACKEND ===');
+            console.log('Response completa:', response);
+            console.log('Response.data:', response.data);
 
-            // Guardar datos del SuperAdmin
-            localStorage.setItem('superadminToken', token);
-            // Usamos los datos que ya teníamos del paso 1
-            if (userData) {
-                localStorage.setItem('superadminUser', JSON.stringify(userData));
-            }
+            const data = response.data;
 
-            toast.success(`¡Acceso concedido! Bienvenido al Panel SuperAdmin`);
-            navigate('/superadmin');
+            // Guardar token y datos del usuario
+            // El backend podría devolver: { token, user } o simplemente { token }
+            const jwtToken = data.token || token; // Si no viene token en la respuesta, usar el que enviamos
+            const user = data.user || data; // Si no viene user separado, asumir que data es el usuario
+
+            localStorage.setItem('superadminToken', jwtToken);
+            localStorage.setItem('superadminUser', JSON.stringify(user));
+
+            console.log('Token guardado:', jwtToken);
+            console.log('Usuario guardado:', user);
+
+            toast.success(`¡Bienvenido ${user.nombres || user.email || 'SuperAdmin'}!`);
+
+            // Pequeño delay para asegurar que se guardó en localStorage
+            setTimeout(() => {
+                navigate('/superadmin');
+            }, 100);
 
         } catch (error) {
-            console.error('Error en validación de token:', error);
-            if (error.response?.status === 403) {
-                toast.error('Acceso denegado: No tienes permisos de SuperAdmin');
-            } else if (error.response?.status === 401) {
+            console.error('=== ERROR EN VALIDACIÓN ===');
+            console.error('Error completo:', error);
+            console.error('Error.response:', error.response);
+
+            if (error.response?.status === 401) {
                 toast.error('Token inválido o expirado');
             } else {
-                // Si falla estadísticas por otra razón, intentamos asumir que es válido si el error no es de auth
-                // Pero por seguridad, mejor mostramos error
                 toast.error('Error al validar el token. Inténtalo de nuevo.');
             }
         } finally {
@@ -147,14 +160,14 @@ const LoginSuperAdminPage = () => {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
                                         <FaUser className="inline mr-2" />
-                                        Usuario
+                                        Email
                                     </label>
                                     <input
-                                        type="text"
-                                        value={credentials.username}
-                                        onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
+                                        type="email"
+                                        value={credentials.email}
+                                        onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
                                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition"
-                                        placeholder="Ingresa tu usuario"
+                                        placeholder="admin@example.com"
                                         required
                                         autoFocus
                                     />
@@ -202,44 +215,27 @@ const LoginSuperAdminPage = () => {
                                     <strong>Paso 2:</strong> Verifica tu token de acceso
                                 </p>
                                 <p className="text-xs text-green-700 mt-1">
-                                    Usuario: <strong>{userData?.nombreUsuario}</strong>
+                                    Hemos enviado un código a: <strong>{userData?.email}</strong>
                                 </p>
-                                {userData?.tokenEnviadoPorEmail && (
-                                    <p className="text-xs text-green-700 mt-2">
-                                        📧 <strong>Token enviado a:</strong> {userData?.emailDestinatario}
-                                    </p>
-                                )}
                             </div>
-
-                            {userData?.tokenEnviadoPorEmail && (
-                                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                    <p className="text-xs text-blue-800">
-                                        <strong>💡 Revisa tu correo electrónico</strong>
-                                    </p>
-                                    <p className="text-xs text-blue-700 mt-1">
-                                        Hemos enviado el token a tu correo. Cópialo desde el email y pégalo aquí abajo.
-                                    </p>
-                                </div>
-                            )}
 
                             <form onSubmit={handleTokenSubmit} className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
                                         <FaKey className="inline mr-2" />
-                                        Token JWT
+                                        Token de Verificación
                                     </label>
                                     <textarea
                                         value={token}
                                         onChange={(e) => setToken(e.target.value)}
                                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition resize-none"
-                                        placeholder={userData?.tokenEnviadoPorEmail ? "Pega aquí el token que recibiste por correo..." : "Token generado automáticamente..."}
-                                        rows="4"
+                                        placeholder="Pega aquí el token que recibiste por correo..."
+                                        rows="3"
                                         required
+                                        autoFocus
                                     />
                                     <p className="text-xs text-gray-500 mt-1">
-                                        {userData?.tokenEnviadoPorEmail
-                                            ? "Revisa tu correo y copia el token completo"
-                                            : "Este token se generó automáticamente al iniciar sesión"}
+                                        Revisa tu bandeja de entrada o spam.
                                     </p>
                                 </div>
 
@@ -265,7 +261,7 @@ const LoginSuperAdminPage = () => {
                                                 Validando...
                                             </span>
                                         ) : (
-                                            '✓ Acceder al Panel'
+                                            '✓ Acceder'
                                         )}
                                     </button>
                                 </div>
