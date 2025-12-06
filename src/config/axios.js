@@ -38,7 +38,7 @@ axiosInstance.interceptors.response.use(
     (error) => {
         // NO redirigir si estamos en endpoints de autenticación de SuperAdmin
         const isSuperAdminAuth = error.config?.url?.includes('/superadmin/auth/');
-
+        
         if (error.response && error.response.status === 401 && !isSuperAdminAuth) {
             // Clear local storage and redirect to login
             localStorage.removeItem('authToken');

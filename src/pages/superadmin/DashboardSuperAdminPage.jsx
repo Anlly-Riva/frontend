@@ -57,8 +57,7 @@ const DashboardSuperAdminPage = () => {
     // Datos para gráfico de super admins por rol
     const superAdminsPorRol = [
         { name: 'MASTER', value: superAdmins.filter(sa => sa.rol === 'MASTER').length },
-        { name: 'SOPORTE', value: superAdmins.filter(sa => sa.rol === 'SOPORTE').length },
-        { name: 'VENTAS', value: superAdmins.filter(sa => sa.rol === 'VENTAS').length }
+        { name: 'SOPORTE', value: superAdmins.filter(sa => sa.rol === 'SOPORTE').length }
     ].filter(item => item.value > 0);
 
     // Colores para el gráfico
