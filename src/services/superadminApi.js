@@ -9,7 +9,7 @@ export const superadminAuthAPI = {
     // Paso 1: Enviar credenciales para recibir token por correo
     initiateLogin: (email, password) => api.post('/restful/superadmin/auth/initiate-login', { email, password }),
     // Paso 2: Verificar token recibido
-    loginWithToken: (token) => api.post('/restful/superadmin/login', { token }),
+    loginWithToken: (token) => api.post('/restful/superadmin/auth/login', { token }),
     getEstadisticas: () => api.get('/restful/superadmin/estadisticas'),
 };
 
