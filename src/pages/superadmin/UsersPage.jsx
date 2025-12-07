@@ -12,10 +12,12 @@ const UsersPage = () => {
     const queryClient = useQueryClient();
 
     // Fetch Super Admins
-    const { data: superAdmins = [], isLoading } = useQuery({
+    const { data: superAdmins = [], isLoading, error } = useQuery({
         queryKey: ['superAdmins'],
         queryFn: superadminApi.getSuperAdmins
     });
+
+    console.log('🔄 UsersPage Render:', { isLoading, superAdmins, error });
 
     // Create/Update Mutation
     const mutation = useMutation({
@@ -121,15 +123,16 @@ const UsersPage = () => {
                                 <th className="p-4 font-medium">Email</th>
                                 <th className="p-4 font-medium">Nombre</th>
                                 <th className="p-4 font-medium">Rol</th>
+                                <th className="p-4 font-medium">Expiración Token</th>
                                 <th className="p-4 font-medium">Estado</th>
                                 <th className="p-4 font-medium text-right">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {isLoading ? (
-                                <tr><td colSpan="5" className="p-4 text-center">Cargando...</td></tr>
+                                <tr><td colSpan="6" className="p-4 text-center">Cargando...</td></tr>
                             ) : filteredSuperAdmins.length === 0 ? (
-                                <tr><td colSpan="5" className="p-4 text-center text-gray-500">No se encontraron super admins</td></tr>
+                                <tr><td colSpan="6" className="p-4 text-center text-gray-500">No se encontraron super admins</td></tr>
                             ) : filteredSuperAdmins.map((superAdmin) => (
                                 <tr key={superAdmin.id_superadmin} className="hover:bg-gray-50 transition-colors">
                                     <td className="p-4">
@@ -143,11 +146,16 @@ const UsersPage = () => {
                                     <td className="p-4 text-gray-600">{superAdmin.nombres}</td>
                                     <td className="p-4">
                                         <span className={`px-2 py-1 rounded text-xs font-medium border ${superAdmin.rol === 'MASTER' ? 'bg-purple-50 text-purple-700 border-purple-100' :
-                                                superAdmin.rol === 'SOPORTE' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                                                    'bg-green-50 text-green-700 border-green-100'
+                                            superAdmin.rol === 'SOPORTE' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                                'bg-green-50 text-green-700 border-green-100'
                                             }`}>
                                             {superAdmin.rol}
                                         </span>
+                                    </td>
+                                    <td className="p-4 text-gray-600 text-sm">
+                                        {superAdmin.token_expiracion
+                                            ? new Date(superAdmin.token_expiracion).toLocaleString()
+                                            : '-'}
                                     </td>
                                     <td className="p-4">
                                         <span className={`px-2 py-1 rounded text-xs font-medium border ${superAdmin.estado === 1

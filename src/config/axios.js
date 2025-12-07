@@ -20,6 +20,14 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('superadminToken') || localStorage.getItem('authToken');
+
+        // DEBUG: Verificar qué token se está usando
+        if (config.url?.includes('/superadmin/')) {
+            console.log('🔐 Request to SuperAdmin Endpoint:', config.url);
+            console.log('🔑 Token used:', token ? (token.substring(0, 20) + '...') : 'NONE');
+            console.log('📂 Source:', localStorage.getItem('superadminToken') ? 'superadminToken' : (localStorage.getItem('authToken') ? 'authToken' : 'NONE'));
+        }
+
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -38,7 +46,7 @@ axiosInstance.interceptors.response.use(
     (error) => {
         // NO redirigir si estamos en endpoints de autenticación de SuperAdmin
         const isSuperAdminAuth = error.config?.url?.includes('/superadmin/auth/');
-        
+
         if (error.response && error.response.status === 401 && !isSuperAdminAuth) {
             // Clear local storage and redirect to login
             localStorage.removeItem('authToken');

@@ -53,8 +53,16 @@ export const restaurantesAPI = {
 // ============================================
 export const superAdminsAPI = {
     getAll: async () => {
-        const response = await api.get('/restful/superadmin/super-admins');
-        return response.data;
+        try {
+            console.log('📡 Fetching SuperAdmins...');
+            const response = await api.get('/restful/superadmin/super-admins');
+            console.log('✅ SuperAdmins response:', response);
+            console.log('📦 SuperAdmins data:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('❌ Error fetching superadmins:', error);
+            throw error;
+        }
     },
     getById: async (id) => {
         const response = await api.get(`/restful/superadmin/super-admins/${id}`);
@@ -128,20 +136,16 @@ export const superadminApi = {
 
     // Super Admins - NUEVO
     getSuperAdmins: async () => {
-        const response = await superAdminsAPI.getAll();
-        return response.data;
+        return await superAdminsAPI.getAll();
     },
     getSuperAdminById: async (id) => {
-        const response = await superAdminsAPI.getById(id);
-        return response.data;
+        return await superAdminsAPI.getById(id);
     },
     createSuperAdmin: async (data) => {
-        const response = await superAdminsAPI.create(data);
-        return response.data;
+        return await superAdminsAPI.create(data);
     },
     updateSuperAdmin: async (id, data) => {
-        const response = await superAdminsAPI.update(id, data);
-        return response.data;
+        return await superAdminsAPI.update(id, data);
     },
     deleteSuperAdmin: async (id) => {
         await superAdminsAPI.delete(id);

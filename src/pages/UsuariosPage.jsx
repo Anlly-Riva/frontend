@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usuariosAPI, perfilesAPI } from '../services/api';
-import { FiPlus, FiDownload, FiUpload } from 'react-icons/fi';
+import { FiPlus, FiDownload, FiUpload, FiUsers, FiShield } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import UsuarioStats from '../components/usuarios/UsuarioStats';
 import UsuarioFilters from '../components/usuarios/UsuarioFilters';
 import UsuariosTable from '../components/usuarios/UsuariosTable';
 import UsuarioModal from '../components/usuarios/UsuarioModal';
+import SuperAdminUsersManager from './superadmin/UsersPage';
 
 const UsuariosPage = () => {
     const queryClient = useQueryClient();
+    const [viewMode, setViewMode] = useState('users'); // 'users' or 'superadmins'
     const [showModal, setShowModal] = useState(false);
     const [selectedUsuario, setSelectedUsuario] = useState(null);
     const [filters, setFilters] = useState({
@@ -33,7 +35,8 @@ const UsuariosPage = () => {
                 ...usuario,
                 nombrePerfil: perfilesMap.get(usuario.rolId) || 'Sin Perfil'
             }));
-        }
+        },
+        enabled: viewMode === 'users'
     });
 
     const deleteMutation = useMutation({
@@ -70,55 +73,86 @@ const UsuariosPage = () => {
         return true;
     }) || [];
 
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center h-full">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-terracotta-500"></div>
-            </div>
-        );
-    }
-
     return (
         <div>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-coffee-800 font-serif">Gestión de Usuarios</h1>
-                    <p className="text-gray-600 mt-1">Administra el acceso y roles del personal</p>
-                </div>
-                <div className="flex gap-3">
-                    <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700 transition">
-                        <FiUpload size={18} />
-                        <span className="hidden sm:inline">Importar</span>
-                    </button>
-                    <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700 transition">
-                        <FiDownload size={18} />
-                        <span className="hidden sm:inline">Exportar</span>
-                    </button>
-                    <button
-                        onClick={handleCreate}
-                        className="flex items-center gap-2 px-4 py-2 bg-terracotta-500 text-white rounded-lg hover:bg-terracotta-600 transition shadow-md"
-                    >
-                        <FiPlus size={20} />
-                        <span>Nuevo Usuario</span>
-                    </button>
-                </div>
+            {/* View Toggle */}
+            <div className="flex justify-start mb-6 bg-white p-1 rounded-lg border border-gray-200 w-fit">
+                <button
+                    onClick={() => setViewMode('users')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all duration-200 ${viewMode === 'users'
+                            ? 'bg-terracotta-100 text-terracotta-700 font-medium shadow-sm'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                        }`}
+                >
+                    <FiUsers />
+                    Usuarios Sistema
+                </button>
+                <div className="w-px bg-gray-200 my-1 mx-1"></div>
+                <button
+                    onClick={() => setViewMode('superadmins')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all duration-200 ${viewMode === 'superadmins'
+                            ? 'bg-red-50 text-red-700 font-medium shadow-sm'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                        }`}
+                >
+                    <FiShield />
+                    Super Admins
+                </button>
             </div>
 
-            <UsuarioStats usuarios={usuariosData || []} />
+            {viewMode === 'superadmins' ? (
+                <div className="animate-in fade-in duration-300">
+                    <SuperAdminUsersManager />
+                </div>
+            ) : (
+                <div className="animate-in fade-in duration-300">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                        <div>
+                            <h1 className="text-3xl font-bold text-coffee-800 font-serif">Gestión de Usuarios</h1>
+                            <p className="text-gray-600 mt-1">Administra el acceso y roles del personal</p>
+                        </div>
+                        <div className="flex gap-3">
+                            <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700 transition">
+                                <FiUpload size={18} />
+                                <span className="hidden sm:inline">Importar</span>
+                            </button>
+                            <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700 transition">
+                                <FiDownload size={18} />
+                                <span className="hidden sm:inline">Exportar</span>
+                            </button>
+                            <button
+                                onClick={handleCreate}
+                                className="flex items-center gap-2 px-4 py-2 bg-terracotta-500 text-white rounded-lg hover:bg-terracotta-600 transition shadow-md"
+                            >
+                                <FiPlus size={20} />
+                                <span>Nuevo Usuario</span>
+                            </button>
+                        </div>
+                    </div>
 
-            <UsuarioFilters filters={filters} setFilters={setFilters} />
+                    {isLoading ? (
+                        <div className="flex items-center justify-center h-64">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-terracotta-500"></div>
+                        </div>
+                    ) : (
+                        <>
+                            <UsuarioStats usuarios={usuariosData || []} />
+                            <UsuarioFilters filters={filters} setFilters={setFilters} />
+                            <UsuariosTable
+                                usuarios={filteredUsuarios}
+                                onEdit={handleEdit}
+                                onDelete={handleDelete}
+                            />
+                        </>
+                    )}
 
-            <UsuariosTable
-                usuarios={filteredUsuarios}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-            />
-
-            {showModal && (
-                <UsuarioModal
-                    usuario={selectedUsuario}
-                    onClose={() => setShowModal(false)}
-                />
+                    {showModal && (
+                        <UsuarioModal
+                            usuario={selectedUsuario}
+                            onClose={() => setShowModal(false)}
+                        />
+                    )}
+                </div>
             )}
         </div>
     );
