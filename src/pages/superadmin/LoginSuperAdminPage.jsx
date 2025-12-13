@@ -1,16 +1,29 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { superadminApi } from '../../services/superadminApi';
 import { FaKey, FaShieldAlt, FaUser, FaLock } from 'react-icons/fa';
+import { useSuperAdminAuth } from '../../context/SuperAdminAuthContext';
 
 const LoginSuperAdminPage = () => {
+    console.log('LoginSuperAdminPage: Rendering...');
     const [step, setStep] = useState(1); // 1 = credenciales, 2 = token
     const [credentials, setCredentials] = useState({ email: '', password: '' });
     const [token, setToken] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [userData, setUserData] = useState(null);
+
     const navigate = useNavigate();
+    const location = useLocation();
+    const { loginStep1, loginStep2, isAuthenticated } = useSuperAdminAuth();
+
+    // Redirect if already authenticated
+    useEffect(() => {
+        if (isAuthenticated) {
+            // const from = location.state?.from?.pathname || '/superadmin';
+            console.log('✅ Authenticated! Forcing redirect to /superadmin');
+            navigate('/superadmin', { replace: true });
+        }
+    }, [isAuthenticated, navigate, location]);
 
     // Paso 1: Login con email y contraseña
     const handleCredentialsSubmit = async (e) => {
@@ -21,33 +34,19 @@ const LoginSuperAdminPage = () => {
             return;
         }
 
-        console.log('=== INICIANDO LOGIN PASO 1 ===');
-        console.log('Email:', credentials.email);
-
         setIsLoading(true);
         try {
-            console.log('Llamando a initiateLogin...');
-            // Llamada al endpoint de inicio de sesión (envía correo)
-            const response = await superadminApi.initiateLogin(credentials.email, credentials.password);
+            // Llamada al endpoint de inicio de sesión (envía correo) a través del Context
+            await loginStep1(credentials.email, credentials.password);
 
-            console.log('=== RESPUESTA PASO 1 ===');
-            console.log('Response completa:', response);
-            console.log('Response.data:', response.data);
-            console.log('Response.status:', response.status);
-
-            // Asumimos que el backend devuelve datos básicos o mensaje de éxito
+            // Guardamos el email para mostrarlo en el paso 2
             setUserData({ email: credentials.email });
             setToken('');
-
-            console.log('Cambiando a paso 2...');
             setStep(2);
             toast.success('Credenciales válidas. Revisa tu correo para obtener el token.');
 
         } catch (error) {
-            console.error('=== ERROR EN PASO 1 ===');
-            console.error('Error completo:', error);
-            console.error('Error.response:', error.response);
-            console.error('Error.message:', error.message);
+            console.error('Login Step 1 Error:', error);
 
             if (error.response?.status === 401) {
                 toast.error('Credenciales incorrectas');
@@ -57,7 +56,6 @@ const LoginSuperAdminPage = () => {
                 toast.error('Error al iniciar sesión: ' + (error.response?.data?.message || error.message));
             }
         } finally {
-            console.log('Finalizando paso 1, isLoading = false');
             setIsLoading(false);
         }
     };
@@ -73,37 +71,15 @@ const LoginSuperAdminPage = () => {
 
         setIsLoading(true);
         try {
-            // Llamada al endpoint de verificación de token
-            const response = await superadminApi.loginWithToken(token);
+            // Llamada al endpoint de verificación de token a través del Context
+            await loginStep2(token);
 
-            console.log('=== RESPUESTA DEL BACKEND ===');
-            console.log('Response completa:', response);
-            console.log('Response.data:', response.data);
+            toast.success('¡Bienvenido SuperAdmin!');
 
-            const data = response.data;
-
-            // Guardar token y datos del usuario
-            // El backend podría devolver: { token, user } o simplemente { token }
-            const jwtToken = data.token || token; // Si no viene token en la respuesta, usar el que enviamos
-            const user = data.user || data; // Si no viene user separado, asumir que data es el usuario
-
-            localStorage.setItem('superadminToken', jwtToken);
-            localStorage.setItem('superadminUser', JSON.stringify(user));
-
-            console.log('Token guardado:', jwtToken);
-            console.log('Usuario guardado:', user);
-
-            toast.success(`¡Bienvenido ${user.nombres || user.email || 'SuperAdmin'}!`);
-
-            // Pequeño delay para asegurar que se guardó en localStorage
-            setTimeout(() => {
-                navigate('/superadmin');
-            }, 100);
+            // La redirección ocurrirá automáticamente gracias al useEffect que vigila isAuthenticated
 
         } catch (error) {
-            console.error('=== ERROR EN VALIDACIÓN ===');
-            console.error('Error completo:', error);
-            console.error('Error.response:', error.response);
+            console.error('Login Step 2 Error:', error);
 
             if (error.response?.status === 401) {
                 toast.error('Token inválido o expirado');
@@ -120,6 +96,9 @@ const LoginSuperAdminPage = () => {
         setToken('');
         setUserData(null);
     };
+
+    // Si ya está autenticado, no renderizar el formulario (evita parpadeo antes de redirigir)
+    if (isAuthenticated) return null;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-red-900 via-red-800 to-orange-900 flex items-center justify-center p-4">
@@ -149,7 +128,7 @@ const LoginSuperAdminPage = () => {
                 <div className="p-8">
                     {step === 1 ? (
                         /* PASO 1: Credenciales */
-                        <>
+                        <div key="step-1" className="animate-fade-in-up">
                             <div className="mb-6 p-4 bg-blue-50 border-l-4 border-blue-400 rounded">
                                 <p className="text-sm text-blue-800">
                                     <strong>Paso 1:</strong> Ingresa tus credenciales de SuperAdmin
@@ -206,10 +185,10 @@ const LoginSuperAdminPage = () => {
                                     )}
                                 </button>
                             </form>
-                        </>
+                        </div>
                     ) : (
                         /* PASO 2: Token */
-                        <>
+                        <div key="step-2" className="animate-fade-in-up">
                             <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-400 rounded">
                                 <p className="text-sm text-green-800">
                                     <strong>Paso 2:</strong> Verifica tu token de acceso
@@ -266,7 +245,7 @@ const LoginSuperAdminPage = () => {
                                     </button>
                                 </div>
                             </form>
-                        </>
+                        </div>
                     )}
                 </div>
 

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Use environment variable or default to the provided API URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9090';
 
 
 //const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://comidas.spring.informaticapp.com:2030';
@@ -19,18 +19,25 @@ const axiosInstance = axios.create({
 // Request interceptor to add the auth token header to requests
 axiosInstance.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('superadminToken') || localStorage.getItem('authToken');
+        // STRICT TOKEN SEPARATION LOGIC
+        // If URL contains '/superadmin/' -> Use superadminToken
+        // Else -> Use authToken
 
-        // DEBUG: Verificar qué token se está usando
-        if (config.url?.includes('/superadmin/')) {
-            console.log('🔐 Request to SuperAdmin Endpoint:', config.url);
-            console.log('🔑 Token used:', token ? (token.substring(0, 20) + '...') : 'NONE');
-            console.log('📂 Source:', localStorage.getItem('superadminToken') ? 'superadminToken' : (localStorage.getItem('authToken') ? 'authToken' : 'NONE'));
+        let token = null;
+        const isSuperAdminRequest = config.url?.includes('/superadmin/');
+
+        if (isSuperAdminRequest) {
+            token = localStorage.getItem('superadminToken');
+            // Debug for SuperAdmin requests
+            console.log('🛡️ SUPERADMIN REQUEST:', config.url);
+        } else {
+            token = localStorage.getItem('authToken');
         }
 
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
+
         return config;
     },
     (error) => {
@@ -44,14 +51,30 @@ axiosInstance.interceptors.response.use(
         return response;
     },
     (error) => {
-        // NO redirigir si estamos en endpoints de autenticación de SuperAdmin
+        const isSuperAdminRequest = error.config?.url?.includes('/superadmin/');
+
+        // NO redirigir si estamos en endpoints de autenticación de SuperAdmin (para que el UI muestre el error)
         const isSuperAdminAuth = error.config?.url?.includes('/superadmin/auth/');
 
-        if (error.response && error.response.status === 401 && !isSuperAdminAuth) {
-            // Clear local storage and redirect to login
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('users');
-            window.location.href = '/login';
+        if (error.response && error.response.status === 401) {
+            console.error('🚨 UNAUTHORIZED (401) DETECTED');
+            console.error('URL:', error.config?.url);
+            console.error('Is SuperAdmin Request:', isSuperAdminRequest);
+
+            if (isSuperAdminRequest) {
+                if (!isSuperAdminAuth) {
+                    console.warn('⚠️ SuperAdmin Session Expired');
+                    localStorage.removeItem('superadminToken');
+                    localStorage.removeItem('superadminUser');
+                    window.location.href = '/superadmin/login';
+                }
+            } else {
+                // Regular user 401
+                console.warn('⚠️ User Session Expired - Redirecting to /login');
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('user');
+                window.location.href = '/login';
+            }
         }
         return Promise.reject(error);
     }

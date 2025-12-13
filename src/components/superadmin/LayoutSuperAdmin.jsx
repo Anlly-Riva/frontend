@@ -1,13 +1,14 @@
 import { Outlet, useNavigate, NavLink } from 'react-router-dom';
 import { FaShieldAlt, FaUserShield, FaCubes, FaStore, FaSignOutAlt, FaHome } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import { useSuperAdminAuth } from '../../context/SuperAdminAuthContext';
 
 const LayoutSuperAdmin = () => {
     const navigate = useNavigate();
+    const { logout } = useSuperAdminAuth();
 
     const handleLogout = () => {
-        localStorage.removeItem('superadminToken');
-        localStorage.removeItem('superadminUser');
+        logout();
         toast.success('Sesión cerrada');
         navigate('/superadmin/login');
     };

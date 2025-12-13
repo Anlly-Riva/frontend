@@ -5,6 +5,8 @@ const ProtectedRoute = ({ children }) => {
     const { isAuthenticated, loading } = useAuth();
     const location = useLocation();
 
+    console.log('🛡️ ProtectedRoute Check:', { path: location.pathname, isAuthenticated, loading });
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-cream-100">
@@ -14,6 +16,7 @@ const ProtectedRoute = ({ children }) => {
     }
 
     if (!isAuthenticated) {
+        console.warn('⛔ ProtectedRoute: User not authenticated. Redirecting to /login from', location.pathname);
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 

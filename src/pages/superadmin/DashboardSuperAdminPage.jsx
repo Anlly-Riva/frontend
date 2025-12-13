@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
     BarChart,
@@ -15,14 +15,10 @@ import {
 import { FaStore, FaUsers, FaUserShield, FaChartLine } from 'react-icons/fa';
 import { superadminApi } from '../../services/superadminApi';
 import { StatCard, ChartContainer } from '../../components/superadmin/DashboardComponents';
+import { useSuperAdminAuth } from '../../context/SuperAdminAuthContext';
 
 const DashboardSuperAdminPage = () => {
-    const [userData, setUserData] = useState(null);
-
-    useEffect(() => {
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        setUserData(user);
-    }, []);
+    const { superAdminUser: userData } = useSuperAdminAuth();
 
     // Cargar restaurantes
     const { data: restaurantes = [], isLoading: loadingRestaurantes } = useQuery({
@@ -170,8 +166,8 @@ const DashboardSuperAdminPage = () => {
                                 dataKey="value"
                                 label={(entry) => `${entry.name}: ${entry.value}`}
                             >
-                                <Cell fill="#10B981" />
-                                <Cell fill="#EF4444" />
+                                <Cell key="active" fill="#10B981" />
+                                <Cell key="inactive" fill="#EF4444" />
                             </Pie>
                             <Tooltip />
                         </PieChart>
@@ -184,9 +180,9 @@ const DashboardSuperAdminPage = () => {
                 {/* Últimos Restaurantes */}
                 <ChartContainer title="Últimos Restaurantes Creados">
                     <div className="space-y-3 overflow-y-auto h-full pr-2">
-                        {restaurantes.slice(0, 5).map((rest) => (
+                        {restaurantes.slice(0, 5).map((rest, index) => (
                             <div
-                                key={rest.id_restaurante}
+                                key={rest.id_restaurante || rest.idRestaurante || index}
                                 className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-100 last:border-0"
                             >
                                 <div className="flex-1">
@@ -210,10 +206,10 @@ const DashboardSuperAdminPage = () => {
                 {/* Últimos Super Admins */}
                 <ChartContainer title="Últimos Super Admins Creados">
                     <div className="space-y-3 overflow-y-auto h-full pr-2">
-                        {superAdmins.slice(0, 5).map((sa) => {
+                        {superAdmins.slice(0, 5).map((sa, index) => {
                             return (
                                 <div
-                                    key={sa.id_superadmin}
+                                    key={sa.id_superadmin || sa.idSuperadmin || index}
                                     className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-100 last:border-0"
                                 >
                                     <div className="flex items-center gap-3 flex-1">
@@ -229,8 +225,8 @@ const DashboardSuperAdminPage = () => {
                                     </div>
                                     <div className="flex flex-col items-end gap-1">
                                         <span className={`text-xs font-medium px-2 py-1 rounded ${sa.rol === 'MASTER' ? 'bg-purple-100 text-purple-700' :
-                                                sa.rol === 'SOPORTE' ? 'bg-blue-100 text-blue-700' :
-                                                    'bg-green-100 text-green-700'
+                                            sa.rol === 'SOPORTE' ? 'bg-blue-100 text-blue-700' :
+                                                'bg-green-100 text-green-700'
                                             }`}>
                                             {sa.rol}
                                         </span>

@@ -50,15 +50,15 @@ export const StatCard = ({ title, value, trend, trendLabel, icon: Icon, color = 
 };
 
 export const ChartContainer = ({ title, subtitle, children, action }) => (
-    <Card className="p-6 h-full">
-        <div className="flex items-center justify-between mb-6">
+    <Card className="p-6 h-full flex flex-col">
+        <div className="flex items-center justify-between mb-6 shrink-0">
             <div>
                 <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
                 {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
             </div>
             {action}
         </div>
-        <div className="w-full h-[300px]">
+        <div className="w-full flex-1 min-h-[300px]">
             {children}
         </div>
     </Card>

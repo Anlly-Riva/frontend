@@ -22,6 +22,8 @@ import RestaurantesPage from './pages/superadmin/RestaurantesPage';
 import SubscriptionsPage from './pages/superadmin/SubscriptionsPage';
 import CrearRestaurantePage from './pages/superadmin/CrearRestaurantePage';
 import CrearClientePage from './pages/superadmin/CrearClientePage';
+import { SuperAdminAuthProvider } from './context/SuperAdminAuthContext';
+import ProtectedSuperAdminRoute from './components/superadmin/ProtectedSuperAdminRoute';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -37,42 +39,48 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            {/* SuperAdmin Routes */}
-            <Route path="/superadmin/login" element={<LoginSuperAdminPage />} />
-            <Route path="/superadmin" element={<LayoutSuperAdmin />}>
-              <Route index element={<DashboardSuperAdminPage />} />
-              <Route path="roles" element={<RolesPage />} />
-              <Route path="permisos" element={<PermisosPage />} />
-              <Route path="usuarios" element={<UsersPage />} />
-              <Route path="restaurantes" element={<RestaurantesPage />} />
-              <Route path="suscripciones" element={<SubscriptionsPage />} />
-              <Route path="crear-restaurante" element={<CrearRestaurantePage />} />
-              <Route path="crear-cliente" element={<CrearClientePage />} />
-            </Route>
+        <SuperAdminAuthProvider>
+          <BrowserRouter>
+            <Routes>
+              {/* SuperAdmin Routes */}
+              <Route path="/superadmin/login" element={<LoginSuperAdminPage />} />
+              <Route path="/superadmin" element={
+                <ProtectedSuperAdminRoute>
+                  <LayoutSuperAdmin />
+                </ProtectedSuperAdminRoute>
+              }>
+                <Route index element={<DashboardSuperAdminPage />} />
+                <Route path="roles" element={<RolesPage />} />
+                <Route path="permisos" element={<PermisosPage />} />
+                <Route path="usuarios" element={<UsersPage />} />
+                <Route path="restaurantes" element={<RestaurantesPage />} />
+                <Route path="suscripciones" element={<SubscriptionsPage />} />
+                <Route path="crear-restaurante" element={<CrearRestaurantePage />} />
+                <Route path="crear-cliente" element={<CrearClientePage />} />
+              </Route>
 
-            {/* Normal Admin Routes */}
-            <Route path="/" element={
-              <ProtectedRoute>
-                <Layout />
-              </ProtectedRoute>
-            }>
-              <Route index element={<DashboardPage />} />
-              <Route path="usuarios" element={<UsuariosPage />} />
-              <Route path="perfiles" element={<PerfilesPage />} />
-              <Route path="modulos" element={<ModulosPage />} />
-              <Route path="accesos" element={<AccesosPage />} />
-            </Route>
+              {/* Normal Admin Routes */}
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<DashboardPage />} />
+                <Route path="usuarios" element={<UsuariosPage />} />
+                <Route path="perfiles" element={<PerfilesPage />} />
+                <Route path="modulos" element={<ModulosPage />} />
+                <Route path="accesos" element={<AccesosPage />} />
+              </Route>
 
-            {/* Redirect /login to /superadmin/login */}
-            <Route path="/login" element={<Navigate to="/superadmin/login" replace />} />
-            
-            {/* Catch all - redirect to home or superadmin login based on auth */}
-            <Route path="*" element={<Navigate to="/superadmin/login" replace />} />
-          </Routes>
-        </BrowserRouter>
-        <Toaster position="top-right" />
+              {/* Login Routes */}
+              <Route path="/login" element={<LoginPage />} />
+
+              {/* Catch all - redirect to home (which will verify auth) */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
+          <Toaster position="top-right" />
+        </SuperAdminAuthProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
