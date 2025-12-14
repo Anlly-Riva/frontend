@@ -79,23 +79,24 @@ const CrearClientePage = () => {
                     {/* Datos Personales */}
                     <div>
                         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                            <FaUserPlus className="text-green-600" /> Datos Personales
+                            <FaUserPlus className="text-green-600" />
+                            <span>Datos Personales</span>
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1"><span>Nombre</span></label>
                                 <input name="nombreUsuario" required className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Apellidos</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1"><span>Apellidos</span></label>
                                 <input name="apellidos" required className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">DNI</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1"><span>DNI</span></label>
                                 <input name="dniUsuario" required className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1"><span>Teléfono</span></label>
                                 <input name="telefono" className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" />
                             </div>
                         </div>
@@ -105,18 +106,18 @@ const CrearClientePage = () => {
 
                     {/* Credenciales y Rol */}
                     <div>
-                        <h2 className="text-lg font-semibold text-gray-900 mb-4">Credenciales de Acceso</h2>
+                        <h2 className="text-lg font-semibold text-gray-900 mb-4"><span>Credenciales de Acceso</span></h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Usuario (Login)</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1"><span>Usuario (Login)</span></label>
                                 <input name="nombreUsuarioLogin" required className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1"><span>Contraseña</span></label>
                                 <input type="password" name="contrasena" required className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" placeholder="••••••••" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1"><span>Rol</span></label>
                                 <select name="rolId" required className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white">
                                     <option value="">Seleccionar Rol...</option>
                                     {isLoadingRoles ? (
@@ -138,15 +139,16 @@ const CrearClientePage = () => {
                     {/* Asignación */}
                     <div>
                         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                            <FaStore className="text-orange-600" /> Asignación de Restaurante
+                            <FaStore className="text-orange-600" />
+                            <span>Asignación de Restaurante</span>
                         </h2>
                         <div className="bg-orange-50 p-4 rounded-lg border border-orange-100 mb-4">
                             <p className="text-sm text-orange-800">
-                                Selecciona el restaurante que administrará este usuario. Esto vinculará su cuenta a la sucursal principal.
+                                <span>Selecciona el restaurante que administrará este usuario. Esto vinculará su cuenta a la sucursal principal.</span>
                             </p>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Restaurante</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1"><span>Restaurante</span></label>
                             <select name="idSucursal" required className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white">
                                 <option value="">Seleccionar Restaurante...</option>
                                 {isLoadingRestaurantes ? (
@@ -162,7 +164,7 @@ const CrearClientePage = () => {
                                 )}
                             </select>
                             <p className="text-xs text-gray-500 mt-1">
-                                * Se asignará a la sucursal principal del restaurante seleccionado.
+                                <span>* Se asignará a la sucursal principal del restaurante seleccionado.</span>
                             </p>
                         </div>
                     </div>
@@ -173,7 +175,14 @@ const CrearClientePage = () => {
                             disabled={loading || mutation.isPending}
                             className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-medium flex items-center gap-2 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-200"
                         >
-                            {loading || mutation.isPending ? 'Guardando...' : <><FaSave /> Crear Cliente</>}
+                            {loading || mutation.isPending ? (
+                                <span>Guardando...</span>
+                            ) : (
+                                <>
+                                    <FaSave />
+                                    <span>Crear Cliente</span>
+                                </>
+                            )}
                         </button>
                     </div>
                 </Card>

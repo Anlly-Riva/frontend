@@ -140,7 +140,7 @@ const RestaurantesPage = () => {
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-600">Estado:</span>
                                     <span className={`px-2 py-1 text-xs rounded-full ${restaurante.estado === 1 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                        {restaurante.estado === 1 ? 'Activo' : 'Inactivo'}
+                                        <span>{restaurante.estado === 1 ? 'Activo' : 'Inactivo'}</span>
                                     </span>
                                 </div>
                             </div>
@@ -186,10 +186,9 @@ const RestaurantesPage = () => {
                                         {selectedRestaurante.estado === 1 ? <FaCheck size={20} /> : <FaBan size={20} />}
                                     </div>
                                     <div>
-                                        <p className="text-sm text-gray-500 font-medium">Estado Actual</p>
-                                        <span className={`text-lg font-bold ${selectedRestaurante.estado === 1 ? 'text-green-700' : 'text-red-700'
-                                            }`}>
-                                            {selectedRestaurante.estado === 1 ? 'ACTIVO' : 'INACTIVO'}
+                                        <p className="text-sm text-gray-500 font-medium"><span>Estado Actual</span></p>
+                                        <span className={`text-lg font-bold ${selectedRestaurante.estado === 1 ? 'text-green-700' : 'text-red-700'}`}>
+                                            <span>{selectedRestaurante.estado === 1 ? 'ACTIVO' : 'INACTIVO'}</span>
                                         </span>
                                     </div>
                                 </div>
@@ -199,7 +198,7 @@ const RestaurantesPage = () => {
                                             onClick={() => setIsEditing(true)}
                                             className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-blue-600 bg-blue-100 hover:bg-blue-200 transition-colors"
                                         >
-                                            <FaEdit /> Editar
+                                            <FaEdit /> <span>Editar</span>
                                         </button>
                                     )}
                                     <button
@@ -210,9 +209,9 @@ const RestaurantesPage = () => {
                                             }`}
                                     >
                                         {selectedRestaurante.estado === 1 ? (
-                                            <> <FaBan /> Desactivar </>
+                                            <> <FaBan /> <span>Desactivar</span> </>
                                         ) : (
-                                            <> <FaCheck /> Activar </>
+                                            <> <FaCheck /> <span>Activar</span> </>
                                         )}
                                     </button>
                                 </div>

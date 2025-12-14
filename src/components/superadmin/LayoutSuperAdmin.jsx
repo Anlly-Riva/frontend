@@ -15,11 +15,13 @@ const LayoutSuperAdmin = () => {
 
     const menuItems = [
         { path: '/superadmin', icon: FaHome, label: 'Dashboard', exact: true },
-        { path: '/superadmin/suscripciones', icon: FaStore, label: 'Suscripciones' },
         { path: '/superadmin/usuarios', icon: FaUserShield, label: 'Usuarios' },
+        { path: '/superadmin/suscripciones', icon: FaStore, label: 'Suscripciones' },
+        { path: '/superadmin/restaurantes', icon: FaStore, label: 'Restaurantes' },
+        //{ path: '/superadmin/sucursales', icon: FaStore, label: 'Sucursales' }, // NUEVO
         { path: '/superadmin/roles', icon: FaUserShield, label: 'Roles' },
         { path: '/superadmin/permisos', icon: FaCubes, label: 'Permisos' },
-        { path: '/superadmin/restaurantes', icon: FaStore, label: 'Restaurantes' },
+        
     ];
 
     return (

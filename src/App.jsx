@@ -22,6 +22,9 @@ import RestaurantesPage from './pages/superadmin/RestaurantesPage';
 import SubscriptionsPage from './pages/superadmin/SubscriptionsPage';
 import CrearRestaurantePage from './pages/superadmin/CrearRestaurantePage';
 import CrearClientePage from './pages/superadmin/CrearClientePage';
+import CrearSucursalPage from './pages/superadmin/CrearSucursalPage';
+import CrearAdminSucursalPage from './pages/superadmin/CrearAdminSucursalPage';
+import SucursalesPage from './pages/superadmin/SucursalesPage';
 import { SuperAdminAuthProvider } from './context/SuperAdminAuthContext';
 import ProtectedSuperAdminRoute from './components/superadmin/ProtectedSuperAdminRoute';
 
@@ -57,6 +60,11 @@ function App() {
                 <Route path="suscripciones" element={<SubscriptionsPage />} />
                 <Route path="crear-restaurante" element={<CrearRestaurantePage />} />
                 <Route path="crear-cliente" element={<CrearClientePage />} />
+
+                {/* Nuevas Rutas de Sucursales */}
+                <Route path="sucursales" element={<SucursalesPage />} />
+                <Route path="crear-sucursal" element={<CrearSucursalPage />} />
+                <Route path="crear-admin-sucursal" element={<CrearAdminSucursalPage />} />
               </Route>
 
               {/* Normal Admin Routes */}

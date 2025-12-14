@@ -1,4 +1,18 @@
 import axiosInstance from '../config/axios';
+import axios from 'axios'; // Import direct axios to bypass instance interceptors for mixed-context calls
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9090';
+
+// Helper to get SuperAdmin headers manually
+const getSuperAdminHeaders = () => {
+    const token = localStorage.getItem('superadminToken');
+    return {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        }
+    };
+};
 
 const api = axiosInstance;
 
@@ -150,4 +164,31 @@ export const superadminApi = {
     deleteSuperAdmin: async (id) => {
         await superAdminsAPI.delete(id);
     },
+
+    // Usuarios del Sistema (Clientes, Empleados, etc) - Nuevos endpoints para SuperAdmin
+    createUsuario: async (data) => {
+        // Asumimos que existe un endpoint en el controlador de SuperAdmin para crear usuarios
+        // y asignarles sucursal/rol directamente.
+        const response = await api.post('/restful/superadmin/usuarios', data);
+        return response.data;
+    },
+
+    // Sucursales - IMPLEMENTACIÓN DIRECTA CON AXIOS
+    // Usamos axios directo porque los endpoints /restful/sucursales no tienen el prefijo /superadmin/
+    // y el interceptor de axiosInstance usaría el token equivocado (authToken en lugar de superadminToken).
+    getSucursales: async () => {
+        const response = await axios.get(`${API_URL}/restful/sucursales/todos`, getSuperAdminHeaders());
+        return response.data;
+    },
+    createSucursal: async (data) => {
+        const response = await axios.post(`${API_URL}/restful/sucursales`, data, getSuperAdminHeaders());
+        return response.data;
+    },
+    getSucursalesByRestaurante: async (idRestaurante) => {
+        // Backend no tiene endpoint de filtro, así que traemos todo y filtramos en frontend
+        const response = await axios.get(`${API_URL}/restful/sucursales/todos`, getSuperAdminHeaders());
+        const todas = response.data;
+        // Convertimos a número para asegurar comparación correcta
+        return todas.filter(s => Number(s.id_restaurante) === Number(idRestaurante));
+    }
 };
