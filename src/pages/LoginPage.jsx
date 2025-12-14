@@ -16,7 +16,7 @@ const LoginPage = () => {
         try {
             await login(username, password);
             toast.success('¡Bienvenido!');
-            navigate('/');
+            navigate('/superadmin/login');
         } catch (error) {
             toast.error('Credenciales inválidas');
         } finally {
@@ -76,8 +76,11 @@ const LoginPage = () => {
                     </form>
                 </div>
 
-                <div className="bg-gray-50 p-4 text-center text-sm text-gray-500">
-                    ¿Olvidaste tu contraseña? Contacta al administrador.
+                <div className="bg-gray-50 p-4 text-center text-sm text-gray-500 flex flex-col gap-2">
+                    <span>¿Olvidaste tu contraseña? Contacta al administrador.</span>
+                    <a href="/superadmin/login" className="text-xs text-gray-300 hover:text-gray-500 transition-colors">
+                        <span>Acceso SuperAdmin</span>
+                    </a>
                 </div>
             </div>
         </div>
