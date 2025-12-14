@@ -70,7 +70,7 @@ function App() {
               {/* Normal Admin Routes */}
               {/* Normal Admin Routes with prefix /admin to avoid conflict or keep at root but add redirect if needed */}
               {/* CURRENTLY: Root / is protected normal admin. We will move this or just redirect unauth to superadmin */}
-              <Route path="/admin" element={
+              <Route path="/" element={
                 <ProtectedRoute>
                   <Layout />
                 </ProtectedRoute>
@@ -86,8 +86,8 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
 
               {/* Redirect root to superadmin logic */}
-              <Route path="/" element={<Navigate to="/superadmin/login" replace />} />
-              <Route path="*" element={<Navigate to="/superadmin/login" replace />} />
+              {/*<Route path="/" element={<Navigate to="/login" replace />} />}*/}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>
           <Toaster position="top-right" />

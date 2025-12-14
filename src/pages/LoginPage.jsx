@@ -16,7 +16,7 @@ const LoginPage = () => {
         try {
             await login(username, password);
             toast.success('¡Bienvenido!');
-            navigate('/superadmin/login');
+            navigate('/');
         } catch (error) {
             toast.error('Credenciales inválidas');
         } finally {

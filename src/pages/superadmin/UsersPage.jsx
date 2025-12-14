@@ -73,11 +73,43 @@ const UsersPage = () => {
         const formData = new FormData(e.target);
         const data = Object.fromEntries(formData.entries());
 
+        // Validar contraseñas
+        if (data.newPassword !== data.confirmPassword) {
+            toast.error('Las contraseñas no coinciden');
+            return;
+        }
+
+        // Si hay una nueva contraseña (o es nuevo usuario), asignarla al campo que espera el backend
+        if (data.newPassword) {
+            data.password = data.newPassword;
+        }
+
+        // Eliminar campos temporales
+        delete data.newPassword;
+        delete data.confirmPassword;
+
         if (editingUser) {
-            data.id_superadmin = editingUser.id_superadmin;
+            // Fallback para encontrar el ID correcto (puede venir como id, id_superadmin o idSuperAdmin)
+            const id = editingUser.id_superadmin || editingUser.id || editingUser.idSuperAdmin;
+
+            if (!id) {
+                console.error('❌ Error: No se encontró ID en editingUser', editingUser);
+                toast.error('Error interno: No se pudo identificar al usuario');
+                return;
+            }
+
+            data.id_superadmin = id;
+            console.log('📝 Editando usuario con ID:', id);
+
             // No enviar password si está vacío al editar
             if (!data.password) {
                 delete data.password;
+            }
+        } else {
+            // Si es nuevo usuario, la contraseña es obligatoria
+            if (!data.password) {
+                toast.error('La contraseña es obligatoria para nuevos usuarios');
+                return;
             }
         }
 
@@ -233,13 +265,29 @@ const UsersPage = () => {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Contraseña {editingUser && '(dejar vacío para mantener)'}
+                                    {editingUser ? 'Nueva Contraseña (dejar vacío para mantener)' : 'Contraseña'}
                                 </label>
                                 <div className="relative">
                                     <FaKey className="absolute left-3 top-3 text-gray-400" />
                                     <input
                                         type="password"
-                                        name="password"
+                                        name="newPassword"
+                                        required={!editingUser}
+                                        className="w-full p-2 pl-10 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                                        placeholder="••••••••"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Confirmar Contraseña
+                                </label>
+                                <div className="relative">
+                                    <FaKey className="absolute left-3 top-3 text-gray-400" />
+                                    <input
+                                        type="password"
+                                        name="confirmPassword"
                                         required={!editingUser}
                                         className="w-full p-2 pl-10 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
                                         placeholder="••••••••"
