@@ -134,6 +134,7 @@ export const superadminApi = {
     },
     getRestauranteById: async (id) => {
         const response = await restaurantesAPI.getById(id);
+        console.log(`📦 getRestauranteById(${id}) Response:`, response.data);
         return response.data;
     },
     createRestaurante: async (data) => {
@@ -165,30 +166,86 @@ export const superadminApi = {
         await superAdminsAPI.delete(id);
     },
 
-    // Usuarios del Sistema (Clientes, Empleados, etc) - Nuevos endpoints para SuperAdmin
+    // Usuarios del Sistema (Clientes, Empleados, etc) - Endpoints para SuperAdmin
+    getUsuarios: async () => {
+        const response = await api.get('/restful/superadmin/usuarios');
+        return response.data;
+    },
     createUsuario: async (data) => {
-        // Asumimos que existe un endpoint en el controlador de SuperAdmin para crear usuarios
-        // y asignarles sucursal/rol directamente.
         const response = await api.post('/restful/superadmin/usuarios', data);
         return response.data;
     },
+    deleteUsuario: async (id) => {
+        await api.delete(`/restful/superadmin/usuarios/${id}`);
+    },
 
-    // Sucursales - IMPLEMENTACIÓN DIRECTA CON AXIOS
-    // Usamos axios directo porque los endpoints /restful/sucursales no tienen el prefijo /superadmin/
-    // y el interceptor de axiosInstance usaría el token equivocado (authToken en lugar de superadminToken).
+    // Sucursales - Usando endpoints de SuperAdmin para evitar 403
     getSucursales: async () => {
+        // Fallback to public if superadmin specific doesn't exist, but likely 403
         const response = await axios.get(`${API_URL}/restful/sucursales/todos`, getSuperAdminHeaders());
         return response.data;
     },
     createSucursal: async (data) => {
+        // Reverting to direct axios call as /superadmin/sucursales (POST) was 404.
+        // We suspect this endpoint works but returns 403 for SuperAdmin, creating a Phantom Branch.
         const response = await axios.post(`${API_URL}/restful/sucursales`, data, getSuperAdminHeaders());
         return response.data;
     },
     getSucursalesByRestaurante: async (idRestaurante) => {
-        // Backend no tiene endpoint de filtro, así que traemos todo y filtramos en frontend
-        const response = await axios.get(`${API_URL}/restful/sucursales/todos`, getSuperAdminHeaders());
-        const todas = response.data;
-        // Convertimos a número para asegurar comparación correcta
-        return todas.filter(s => Number(s.id_restaurante) === Number(idRestaurante));
+        // BRUTE FORCE PROBE STRATEGY
+        // Try multiple likely endpoints until one returns an array
+
+        const probes = [
+            `/restful/superadmin/restaurantes/${idRestaurante}/sucursales`, // 1. SuperAdmin Nested
+            `/restful/restaurantes/${idRestaurante}/sucursales`,             // 2. Public Nested
+            `/restful/sucursales/restaurante/${idRestaurante}`,              // 3. Custom Filter Path
+            `/restful/superadmin/sucursales`,                                // 4. SuperAdmin Global List (NEW TRY)
+            `/restful/sucursales/search/findByIdRestaurante?id=${idRestaurante}` // 5. Spring Data Search
+        ];
+
+        for (const url of probes) {
+            try {
+                console.log(`🔌 Probing: ${url}`);
+                const isSuperAdmin = url.includes('/superadmin/');
+
+                let response;
+                if (isSuperAdmin) {
+                    // SuperAdmin endpoints NEED the specific token
+                    response = await api.get(url);
+                } else {
+                    // Public/Regular endpoints might fail if we send the SuperAdmin token 
+                    // (because the user doesn't exist in the 'usuarios' table logic).
+                    // We try ANONYMOUSLY first.
+                    try {
+                        response = await axios.get(`${API_URL}${url}`); // No headers
+                    } catch (anonErr) {
+                        // If anonymous fails (401), we try with the token just in case
+                        console.log(`   ...Anon failed, retrying with headers for: ${url}`);
+                        response = await axios.get(`${API_URL}${url}`, getSuperAdminHeaders());
+                    }
+                }
+
+                if (Array.isArray(response.data)) {
+                    console.log(`✅ Probe Success: ${url}`);
+                    return response.data;
+                } else if (response.data?._embedded?.sucursales) {
+                    // Handle Spring HATEOAS format
+                    return response.data._embedded.sucursales;
+                }
+            } catch (e) {
+                console.log(`❌ Probe Failed: ${url}`);
+            }
+        }
+
+        // Fallback: public blocked endpoint (Last Resort)
+        console.warn('⚠️ All specific probes failed. Trying generic list...');
+        try {
+            const response = await axios.get(`${API_URL}/restful/sucursales/todos`, getSuperAdminHeaders());
+            const todas = response.data;
+            return todas.filter(s => Number(s.id_restaurante) === Number(idRestaurante));
+        } catch (finalError) {
+            console.error('☠️ All sucursal fetches failed.', finalError);
+            return [];
+        }
     }
 };

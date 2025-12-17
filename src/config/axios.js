@@ -1,10 +1,10 @@
 import axios from 'axios';
 
 // Use environment variable or default to the provided API URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9090';
+//const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9090';
 
 
-//const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://comidas.spring.informaticapp.com:2030';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://comidas.spring.informaticapp.com:2192';
 
 
 

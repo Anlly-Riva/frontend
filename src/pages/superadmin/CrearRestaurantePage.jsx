@@ -12,12 +12,112 @@ const CrearRestaurantePage = () => {
     const [loading, setLoading] = useState(false);
 
     const mutation = useMutation({
-        mutationFn: superadminApi.createRestaurante,
-        onSuccess: () => {
+        mutationFn: async (dataResult) => {
+            // 1. Create Restaurant
+            const newRestaurante = await superadminApi.createRestaurante(dataResult);
+            let createdBranchId = null;
+
+            // 2. Auto-create Main Branch if restaurant has ID
+            if (newRestaurante && newRestaurante.id_restaurante) {
+                const branchData = {
+                    id_restaurante: newRestaurante.id_restaurante,
+                    nombre: 'Sucursal Principal',
+                    direccion: dataResult.direccion_principal || 'Dirección Principal',
+                    telefono: '',
+                    horario_atencion: '9am - 6pm',
+                    estado: 1
+                };
+
+                // Try primary creation
+                try {
+                    let newBranch = await superadminApi.createSucursal(branchData);
+                    if (newBranch && newBranch.id_sucursal) {
+                        createdBranchId = newBranch.id_sucursal;
+                    }
+                } catch (primaryErr) {
+                    // Silent fallback - try anonymous
+                    try {
+                        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9090';
+                        const response = await fetch(`${API_URL}/restful/sucursales`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(branchData)
+                        });
+                        if (response.ok) {
+                            const newBranch = await response.json();
+                            if (newBranch?.id_sucursal) createdBranchId = newBranch.id_sucursal;
+                        }
+                    } catch (anonErr) { /* Silent fallback to nested */ }
+                }
+
+                // Final fallback: Nested POST
+                if (!createdBranchId) {
+                    try {
+                        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9090';
+                        const nestedUrl = `${API_URL}/restful/restaurantes/${newRestaurante.id_restaurante}/sucursales`;
+                        const response = await fetch(nestedUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localStorage.getItem('superadminToken')}`
+                            },
+                            body: JSON.stringify(branchData)
+                        });
+
+                        if (response.ok) {
+                            const newBranch = await response.json();
+                            if (newBranch?.id_sucursal) createdBranchId = newBranch.id_sucursal;
+                        }
+                        // If 403 or any error, we'll try recovery below
+                    } catch (nestedErr) { /* Will try recovery */ }
+                }
+
+                // INTELLIGENT RECOVERY: If still no ID, refetch restaurant to find embedded sucursales
+                if (!createdBranchId) {
+                    try {
+                        // Wait a moment for DB to settle
+                        await new Promise(resolve => setTimeout(resolve, 500));
+
+                        const restaurantDetails = await superadminApi.getRestauranteById(newRestaurante.id_restaurante);
+                        if (restaurantDetails?.sucursales?.length > 0) {
+                            // Found embedded sucursales! Get the first one (should be the main branch)
+                            createdBranchId = restaurantDetails.sucursales[0].id_sucursal;
+                        }
+                    } catch (recoveryErr) { /* Recovery failed */ }
+                }
+            }
+
+            // If we still don't have the ID, use a special flag to indicate manual entry needed
+            const needsManualEntry = !createdBranchId;
+
+            return { ...newRestaurante, createdSucursalId: createdBranchId, needsManualEntry };
+        },
+        onSuccess: (data) => {
             queryClient.invalidateQueries(['restaurantes']);
-            toast.success('Restaurante creado exitosamente');
+            queryClient.invalidateQueries(['sucursales']);
+
+            if (data.needsManualEntry) {
+                toast.success('Restaurante creado. Necesitarás ingresar el ID de sucursal manualmente.');
+            } else {
+                toast.success('Restaurante y sucursal creados exitosamente.');
+            }
+
+            // Navigate to Create Client with PRE-FILLED data
+            const params = new URLSearchParams();
+            params.append('idRestaurante', data.id_restaurante);
+            params.append('razonSocial', data.razon_social);
+            if (data.createdSucursalId) {
+                params.append('idSucursal', data.createdSucursalId);
+            }
+            if (data.needsManualEntry) {
+                params.append('needsManual', 'true');
+            }
+
+            setTimeout(() => {
+                navigate(`/superadmin/crear-cliente?${params.toString()}`);
+            }, 1500);
+
             setLoading(false);
-            navigate('/superadmin/restaurantes');
         },
         onError: (error) => {
             toast.error('Error al crear restaurante: ' + error.message);

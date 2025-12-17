@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FaUserPlus, FaSave, FaArrowLeft, FaStore } from 'react-icons/fa';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { superadminApi } from '../../services/superadminApi';
 import { Card } from '../../components/superadmin/DashboardComponents';
@@ -9,7 +9,30 @@ import { Card } from '../../components/superadmin/DashboardComponents';
 const CrearClientePage = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const [searchParams] = useSearchParams();
     const [loading, setLoading] = useState(false);
+
+    // Pre-filled data from URL (Create Restaurant Flow)
+    const paramIdRestaurante = searchParams.get('idRestaurante');
+    const paramIdSucursal = searchParams.get('idSucursal');
+    const paramNeedsManual = searchParams.get('needsManual') === 'true';
+
+    const [sucursales, setSucursales] = useState([]);
+    const [selectedRestaurantId, setSelectedRestaurantId] = useState(paramIdRestaurante || null);
+    const [showManualInput, setShowManualInput] = useState(paramNeedsManual);
+    const [sucursalIdInput, setSucursalIdInput] = useState(paramIdSucursal || '');
+
+    // Effect to handle pre-filled data
+    useEffect(() => {
+        if (paramIdRestaurante && paramIdSucursal && !paramNeedsManual) {
+            // We have a valid sucursal ID from the URL
+            setSucursales([{ id_sucursal: parseInt(paramIdSucursal) }]);
+            setShowManualInput(false);
+        } else if (paramNeedsManual) {
+            // Needs manual entry
+            setShowManualInput(true);
+        }
+    }, [paramIdRestaurante, paramIdSucursal, paramNeedsManual]);
 
     // Fetch Restaurants for assignment
     const { data: restaurantes = [], isLoading: isLoadingRestaurantes } = useQuery({
@@ -23,16 +46,54 @@ const CrearClientePage = () => {
         queryFn: superadminApi.getRoles
     });
 
+    // Fetch Specific Restaurant Details on selection
+
+
+    const handleRestaurantChange = async (e) => {
+        const restId = e.target.value;
+        setSelectedRestaurantId(restId);
+        setSucursalIdInput(''); // Reset input
+
+        if (!restId) {
+            setSucursales([]);
+            return;
+        }
+
+        try {
+            // 1. Try to get branches via probe
+            const branches = await superadminApi.getSucursalesByRestaurante(restId);
+            if (branches && branches.length > 0) {
+                setSucursales(branches);
+                setSucursalIdInput(branches[0].id_sucursal.toString());
+                return;
+            }
+
+            // 2. Fallback: Check if embedded in restaurant details
+            const restaurantDetails = await superadminApi.getRestauranteById(restId);
+            if (restaurantDetails?.sucursales?.length > 0) {
+                setSucursales(restaurantDetails.sucursales);
+                setSucursalIdInput(restaurantDetails.sucursales[0].id_sucursal.toString());
+            } else {
+                setSucursales([]);
+            }
+
+        } catch (error) {
+            setSucursales([]);
+        }
+    };
+
     const mutation = useMutation({
         mutationFn: superadminApi.createUsuario,
         onSuccess: () => {
             queryClient.invalidateQueries(['users']);
             toast.success('Cliente creado y asignado exitosamente');
             setLoading(false);
-            navigate('/superadmin/usuarios');
+            navigate('/superadmin');
         },
         onError: (error) => {
-            toast.error('Error al crear cliente: ' + error.message);
+            console.error('❌ Error Mutation (Detailed):', error.response?.data);
+            const backendMsg = error.response?.data?.message || error.response?.data?.error || error.message;
+            toast.error(`Error al crear cliente: ${backendMsg}`);
             setLoading(false);
         }
     });
@@ -41,23 +102,63 @@ const CrearClientePage = () => {
         e.preventDefault();
         setLoading(true);
         const formData = new FormData(e.target);
-        const data = Object.fromEntries(formData.entries());
+        const rawData = Object.fromEntries(formData.entries());
 
-        // Validation
-        if (!data.idSucursal) {
+        // Validation - Restaurant Selection
+        if (!rawData.idRestaurantSelection) {
             toast.error('Debes seleccionar un restaurante para asignar al cliente');
             setLoading(false);
             return;
         }
 
-        if (!data.rolId) {
+        if (!rawData.rolId) {
             toast.error('Debes seleccionar un rol para el cliente');
             setLoading(false);
             return;
         }
 
+        // Find main branch from the fetched list
+        // Note: The list in logic above fetches filtered branches.
+        // If that fails (due to the loop issue before), we need to ensure getSucursalesByRestaurante works.
+        // Let's rely on the state 'sucursales' which we populate on change.
+
+        let idSucursalFinal = null;
+
+        // 1. Try from auto-detected list
+        if (sucursales.length > 0) {
+            idSucursalFinal = sucursales[0].id_sucursal;
+        }
+        // 2. Try from Manual Input (Fallback for edge cases)
+        else if (rawData.idSucursalManual && rawData.idSucursalManual.trim() !== '') {
+            idSucursalFinal = parseInt(rawData.idSucursalManual);
+        }
+
+        const data = {
+            ...rawData,
+            rolId: parseInt(rawData.rolId),
+            estado: 1 // Default active
+        };
+
+        if (idSucursalFinal) {
+            data.idSucursal = idSucursalFinal;
+        } else {
+            // Fallback - use restaurant ID (may fail if backend requires sucursal)
+            data.id_restaurante = parseInt(rawData.idRestaurantSelection);
+            delete data.idSucursal;
+        }
+
+        // Ensure we don't send both
+        if (data.idSucursal) {
+            delete data.id_restaurante;
+        }
+
+        // Remove form-only fields
+        delete data.idSucursalManual;
+        delete data.idRestaurantSelection;
+
         mutation.mutate(data);
     };
+
 
     return (
         <div className="max-w-4xl mx-auto">
@@ -149,7 +250,13 @@ const CrearClientePage = () => {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1"><span>Restaurante</span></label>
-                            <select name="idSucursal" required className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white">
+                            <select
+                                name="idRestaurantSelection"
+                                required
+                                onChange={handleRestaurantChange}
+                                defaultValue={paramIdRestaurante || ""}
+                                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+                            >
                                 <option value="">Seleccionar Restaurante...</option>
                                 {isLoadingRestaurantes ? (
                                     <option disabled>Cargando restaurantes...</option>
@@ -166,6 +273,37 @@ const CrearClientePage = () => {
                             <p className="text-xs text-gray-500 mt-1">
                                 <span>* Se asignará a la sucursal principal del restaurante seleccionado.</span>
                             </p>
+
+                            {/* ID Sucursal - With auto-detection helper */}
+                            <div className="mt-4 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                <h4 className="text-sm font-semibold text-blue-800 mb-2">📝 ID de Sucursal</h4>
+
+                                {/* Show detected ID if available */}
+                                {sucursales.length > 0 && (
+                                    <div className="mb-3 p-2 bg-green-100 rounded border border-green-300">
+                                        <span className="text-sm text-green-800">
+                                            ✅ Sucursal detectada y autocompletada
+                                        </span>
+                                    </div>
+                                )}
+
+                                {sucursales.length === 0 && selectedRestaurantId && (
+                                    <p className="text-xs text-amber-700 mb-2">
+                                        ⚠️ No se pudo detectar automáticamente. Ingresa el ID manualmente.
+                                    </p>
+                                )}
+
+                                <label className="block text-sm font-medium text-gray-700 mb-1">ID Sucursal</label>
+                                <input
+                                    name="idSucursalManual"
+                                    type="number"
+                                    required
+                                    value={sucursalIdInput}
+                                    onChange={(e) => setSucursalIdInput(e.target.value)}
+                                    className="w-full p-2 border border-blue-300 rounded bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                    placeholder="Ej: 35"
+                                />
+                            </div>
                         </div>
                     </div>
 

@@ -25,6 +25,7 @@ import CrearClientePage from './pages/superadmin/CrearClientePage';
 import CrearSucursalPage from './pages/superadmin/CrearSucursalPage';
 import CrearAdminSucursalPage from './pages/superadmin/CrearAdminSucursalPage';
 import SucursalesPage from './pages/superadmin/SucursalesPage';
+import ClientesPage from './pages/superadmin/ClientesPage';
 import { SuperAdminAuthProvider } from './context/SuperAdminAuthContext';
 import ProtectedSuperAdminRoute from './components/superadmin/ProtectedSuperAdminRoute';
 
@@ -60,6 +61,7 @@ function App() {
                 <Route path="suscripciones" element={<SubscriptionsPage />} />
                 <Route path="crear-restaurante" element={<CrearRestaurantePage />} />
                 <Route path="crear-cliente" element={<CrearClientePage />} />
+                <Route path="clientes" element={<ClientesPage />} />
 
                 {/* Nuevas Rutas de Sucursales */}
                 <Route path="sucursales" element={<SucursalesPage />} />
