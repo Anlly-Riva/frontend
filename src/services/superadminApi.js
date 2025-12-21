@@ -168,11 +168,40 @@ export const superadminApi = {
 
     // Usuarios del Sistema (Clientes, Empleados, etc) - Endpoints para SuperAdmin
     getUsuarios: async () => {
-        const response = await api.get('/restful/superadmin/usuarios');
-        return response.data;
+        // Probe multiple possible endpoints
+        const endpoints = [
+            '/restful/superadmin/usuarios',
+            '/restful/usuarios',
+            '/restful/usuarios/todos',
+            '/api/usuarios'
+        ];
+
+        for (const url of endpoints) {
+            try {
+                console.log(`🔌 Probing usuarios: ${url}`);
+                const response = await api.get(url);
+                if (Array.isArray(response.data)) {
+                    console.log(`✅ Usuarios found at: ${url}`);
+                    return response.data;
+                }
+                // Handle Spring HATEOAS format
+                if (response.data?._embedded?.usuarios) {
+                    return response.data._embedded.usuarios;
+                }
+            } catch (e) {
+                console.log(`❌ Probe failed: ${url}`);
+            }
+        }
+
+        console.error('☠️ All usuario endpoints failed');
+        return [];
     },
     createUsuario: async (data) => {
         const response = await api.post('/restful/superadmin/usuarios', data);
+        return response.data;
+    },
+    updateUsuario: async (id, data) => {
+        const response = await api.put(`/restful/superadmin/usuarios/${id}`, data);
         return response.data;
     },
     deleteUsuario: async (id) => {

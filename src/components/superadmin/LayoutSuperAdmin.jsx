@@ -21,6 +21,7 @@ const LayoutSuperAdmin = () => {
         { path: '/superadmin/restaurantes', icon: FaStore, label: 'Restaurantes' },
         { path: '/superadmin/roles', icon: FaUserShield, label: 'Roles' },
         { path: '/superadmin/permisos', icon: FaCubes, label: 'Permisos' },
+        { path: '/superadmin/permisos', icon: FaCubes, label: 'Permisos' },
     ];
 
     return (

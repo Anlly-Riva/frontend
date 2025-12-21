@@ -19,6 +19,7 @@ export const StatCard = ({ title, value, trend, trendLabel, icon: Icon, color = 
         purple: "bg-purple-50 text-purple-600",
         orange: "bg-orange-50 text-orange-600",
         red: "bg-red-50 text-red-600",
+        cyan: "bg-cyan-50 text-cyan-600",
     };
 
     return (

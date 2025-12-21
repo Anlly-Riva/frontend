@@ -10,9 +10,12 @@ import {
     ResponsiveContainer,
     PieChart,
     Pie,
-    Cell
+    Cell,
+    LineChart,
+    Line,
+    Legend
 } from 'recharts';
-import { FaStore, FaUsers, FaUserShield, FaChartLine } from 'react-icons/fa';
+import { FaStore, FaUsers, FaUserShield, FaChartLine, FaUserTie, FaCalendarAlt } from 'react-icons/fa';
 import { superadminApi } from '../../services/superadminApi';
 import { StatCard, ChartContainer } from '../../components/superadmin/DashboardComponents';
 import { useSuperAdminAuth } from '../../context/SuperAdminAuthContext';
@@ -26,7 +29,13 @@ const DashboardSuperAdminPage = () => {
         queryFn: superadminApi.getRestaurantes
     });
 
-    // Cargar super admins (antes usuarios)
+    // Cargar clientes/usuarios
+    const { data: usuarios = [], isLoading: loadingUsuarios } = useQuery({
+        queryKey: ['usuarios'],
+        queryFn: superadminApi.getUsuarios
+    });
+
+    // Cargar super admins
     const { data: superAdmins = [], isLoading: loadingSuperAdmins } = useQuery({
         queryKey: ['superAdmins'],
         queryFn: superadminApi.getSuperAdmins
@@ -46,26 +55,57 @@ const DashboardSuperAdminPage = () => {
 
     // Calcular estadísticas
     const restaurantesActivos = restaurantes.filter(r => r.estado === 1).length;
+    const usuariosActivos = usuarios.filter(u => u.estado === 1).length;
     const superAdminsActivos = superAdmins.filter(sa => sa.estado === 1).length;
-    const rolesActivos = roles.filter(r => r.estado === 1).length;
-    const modulosActivos = modulos.filter(m => m.estado === 1).length;
 
-    // Datos para gráfico de super admins por rol
-    const superAdminsPorRol = [
-        { name: 'MASTER', value: superAdmins.filter(sa => sa.rol === 'MASTER').length },
-        { name: 'SOPORTE', value: superAdmins.filter(sa => sa.rol === 'SOPORTE').length }
-    ].filter(item => item.value > 0);
+    // Calcular crecimiento por mes (últimos 6 meses)
+    const calcularCrecimientoPorMes = () => {
+        const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        const ahora = new Date();
+        const datos = [];
 
-    // Colores para el gráfico
-    const COLORS = ['#3B82F6', '#F59E0B', '#10B981', '#8B5CF6', '#EF4444', '#06B6D4'];
+        for (let i = 5; i >= 0; i--) {
+            const fecha = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
+            const mesIndex = fecha.getMonth();
+            const año = fecha.getFullYear();
 
-    // Datos para gráfico de restaurantes por estado
-    const restaurantesPorEstado = [
-        { name: 'Activos', value: restaurantesActivos },
-        { name: 'Inactivos', value: restaurantes.length - restaurantesActivos }
+            // Contar restaurantes creados hasta ese mes
+            const restHastaMes = restaurantes.filter(r => {
+                if (!r.fecha_creacion && !r.fechaCreacion) return true; // Sin fecha = existía
+                const fechaRest = new Date(r.fecha_creacion || r.fechaCreacion);
+                return fechaRest <= new Date(año, mesIndex + 1, 0);
+            }).length;
+
+            // Contar usuarios creados hasta ese mes
+            const usersHastaMes = usuarios.filter(u => {
+                if (!u.fechaCreacion && !u.fecha_creacion) return true;
+                const fechaUser = new Date(u.fechaCreacion || u.fecha_creacion);
+                return fechaUser <= new Date(año, mesIndex + 1, 0);
+            }).length;
+
+            datos.push({
+                mes: `${meses[mesIndex]} ${año.toString().slice(-2)}`,
+                restaurantes: restHastaMes,
+                clientes: usersHastaMes
+            });
+        }
+
+        return datos;
+    };
+
+    const datosCrecimiento = calcularCrecimientoPorMes();
+
+    // Datos para el gráfico circular
+    const datosDistribucion = [
+        { name: 'Restaurantes', value: restaurantes.length, color: '#3B82F6' },
+        { name: 'Clientes', value: usuarios.length, color: '#10B981' },
+        { name: 'SuperAdmins', value: superAdmins.length, color: '#8B5CF6' }
     ];
 
-    if (loadingRestaurantes || loadingSuperAdmins || loadingRoles || loadingModulos) {
+    // Colores
+    const COLORS = ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444'];
+
+    if (loadingRestaurantes || loadingSuperAdmins || loadingRoles || loadingModulos || loadingUsuarios) {
         return (
             <div className="flex justify-center items-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
@@ -76,98 +116,120 @@ const DashboardSuperAdminPage = () => {
     return (
         <div className="space-y-8">
             {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold text-gray-900">Panel de Control - Superadmin</h1>
-                <p className="text-gray-500 mt-1">
-                    Vista general del sistema: restaurantes, super admins y configuración.
+            <div className="bg-gradient-to-r from-red-800 to-red-600 rounded-xl p-6 text-white shadow-lg">
+                <h1 className="text-2xl font-bold">Panel de Control - SuperAdmin</h1>
+                <p className="text-red-100 mt-1">
+                    Reporte general del sistema • {new Date().toLocaleDateString('es-PE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                 </p>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Stats Grid - 5 cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 <StatCard
                     title="Restaurantes"
-                    value={restaurantesActivos}
-                    trend={`${restaurantes.length} totales`}
-                    trendLabel="Activos en el sistema"
+                    value={restaurantes.length}
+                    trend={`${restaurantesActivos} activos`}
+                    trendLabel="Suscritos al sistema"
                     icon={FaStore}
                     color="blue"
                 />
                 <StatCard
-                    title="Super Admins"
-                    value={superAdminsActivos}
-                    trend={`${superAdmins.length} totales`}
-                    trendLabel="Administradores del sistema"
-                    icon={FaUsers}
+                    title="Clientes"
+                    value={usuarios.length}
+                    trend={`${usuariosActivos} activos`}
+                    trendLabel="Usuarios registrados"
+                    icon={FaUserTie}
                     color="green"
                 />
                 <StatCard
-                    title="Roles"
-                    value={rolesActivos}
-                    trend={`${roles.length} totales`}
-                    trendLabel="Perfiles configurados"
+                    title="SuperAdmins"
+                    value={superAdmins.length}
+                    trend={`${superAdminsActivos} activos`}
+                    trendLabel="Administradores"
                     icon={FaUserShield}
                     color="purple"
                 />
                 <StatCard
-                    title="Módulos"
-                    value={modulosActivos}
-                    trend={`${modulos.length} totales`}
-                    trendLabel="Módulos del sistema"
-                    icon={FaChartLine}
+                    title="Roles"
+                    value={roles.length}
+                    trend={`${roles.filter(r => r.estado === 1).length} activos`}
+                    trendLabel="Perfiles del sistema"
+                    icon={FaUsers}
                     color="orange"
+                />
+                <StatCard
+                    title="Módulos"
+                    value={modulos.length}
+                    trend={`${modulos.filter(m => m.estado === 1).length} activos`}
+                    trendLabel="Funcionalidades"
+                    icon={FaChartLine}
+                    color="cyan"
                 />
             </div>
 
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Bar Chart - Super Admins por Rol */}
-                <ChartContainer title="Distribución de Super Admins por Rol">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={superAdminsPorRol} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                            <XAxis
-                                dataKey="name"
-                                axisLine={false}
-                                tickLine={false}
-                                tick={{ fill: '#6B7280', fontSize: 12 }}
-                                angle={-45}
-                                textAnchor="end"
-                                height={80}
-                            />
-                            <YAxis
-                                axisLine={false}
-                                tickLine={false}
-                                tick={{ fill: '#6B7280', fontSize: 12 }}
-                            />
-                            <Tooltip
-                                contentStyle={{
-                                    borderRadius: '8px',
-                                    border: 'none',
-                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                                }}
-                            />
-                            <Bar dataKey="value" fill="#3B82F6" radius={[8, 8, 0, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </ChartContainer>
+            {/* Main Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Bar Chart - Crecimiento del Servicio */}
+                <div className="lg:col-span-2">
+                    <ChartContainer title="📈 Crecimiento del Servicio (últimos 6 meses)">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={datosCrecimiento} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                                <XAxis
+                                    dataKey="mes"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#6B7280', fontSize: 12 }}
+                                />
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#6B7280', fontSize: 12 }}
+                                />
+                                <Tooltip
+                                    contentStyle={{
+                                        borderRadius: '8px',
+                                        border: 'none',
+                                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                        backgroundColor: '#fff'
+                                    }}
+                                />
+                                <Legend />
+                                <Bar
+                                    dataKey="restaurantes"
+                                    fill="#3B82F6"
+                                    radius={[4, 4, 0, 0]}
+                                    name="Restaurantes"
+                                />
+                                <Bar
+                                    dataKey="clientes"
+                                    fill="#10B981"
+                                    radius={[4, 4, 0, 0]}
+                                    name="Clientes"
+                                />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </ChartContainer>
+                </div>
 
-                {/* Pie Chart - Restaurantes por Estado */}
-                <ChartContainer title="Estado de Restaurantes">
+                {/* Pie Chart - Distribución General */}
+                <ChartContainer title="📊 Distribución del Sistema">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
-                                data={restaurantesPorEstado}
+                                data={datosDistribucion}
                                 cx="50%"
                                 cy="50%"
-                                innerRadius={60}
-                                outerRadius={90}
-                                paddingAngle={5}
+                                innerRadius={50}
+                                outerRadius={80}
+                                paddingAngle={3}
                                 dataKey="value"
-                                label={(entry) => `${entry.name}: ${entry.value}`}
+                                label={({ name, value }) => `${name}: ${value}`}
+                                labelLine={false}
                             >
-                                <Cell key="active" fill="#10B981" />
-                                <Cell key="inactive" fill="#EF4444" />
+                                {datosDistribucion.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
                             </Pie>
                             <Tooltip />
                         </PieChart>
@@ -175,19 +237,24 @@ const DashboardSuperAdminPage = () => {
                 </ChartContainer>
             </div>
 
-            {/* Tables Section */}
+            {/* Lists Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Últimos Restaurantes */}
-                <ChartContainer title="Últimos Restaurantes Creados">
+                <ChartContainer title="🏪 Últimos Restaurantes Registrados">
                     <div className="space-y-3 overflow-y-auto h-full pr-2">
                         {restaurantes.slice(0, 5).map((rest, index) => (
                             <div
                                 key={rest.id_restaurante || rest.idRestaurante || index}
                                 className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-100 last:border-0"
                             >
-                                <div className="flex-1">
-                                    <p className="text-sm font-medium text-gray-900">{rest.razon_social}</p>
-                                    <p className="text-xs text-gray-500">RUC: {rest.ruc}</p>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+                                        <FaStore />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-900">{rest.razon_social}</p>
+                                        <p className="text-xs text-gray-500">RUC: {rest.ruc}</p>
+                                    </div>
                                 </div>
                                 <span className={`text-xs font-medium px-3 py-1 rounded-full ${rest.estado === 1
                                     ? 'bg-green-100 text-green-700'
@@ -203,48 +270,51 @@ const DashboardSuperAdminPage = () => {
                     </div>
                 </ChartContainer>
 
-                {/* Últimos Super Admins */}
-                <ChartContainer title="Últimos Super Admins Creados">
+                {/* Últimos Clientes */}
+                <ChartContainer title="👥 Últimos Clientes Registrados">
                     <div className="space-y-3 overflow-y-auto h-full pr-2">
-                        {superAdmins.slice(0, 5).map((sa, index) => {
-                            return (
-                                <div
-                                    key={sa.id_superadmin || sa.idSuperadmin || index}
-                                    className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-100 last:border-0"
-                                >
-                                    <div className="flex items-center gap-3 flex-1">
-                                        <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-sm">
-                                            {sa.email?.substring(0, 2).toUpperCase() || 'SA'}
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-900">
-                                                {sa.nombres}
-                                            </p>
-                                            <p className="text-xs text-gray-500">{sa.email}</p>
-                                        </div>
+                        {usuarios.slice(0, 5).map((user, index) => (
+                            <div
+                                key={user.idUsuario || user.id_usuario || index}
+                                className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-100 last:border-0"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-sm">
+                                        {user.nombreUsuario?.substring(0, 2).toUpperCase() || 'U'}
                                     </div>
-                                    <div className="flex flex-col items-end gap-1">
-                                        <span className={`text-xs font-medium px-2 py-1 rounded ${sa.rol === 'MASTER' ? 'bg-purple-100 text-purple-700' :
-                                            sa.rol === 'SOPORTE' ? 'bg-blue-100 text-blue-700' :
-                                                'bg-green-100 text-green-700'
-                                            }`}>
-                                            {sa.rol}
-                                        </span>
-                                        <span className={`text-xs font-medium px-2 py-1 rounded ${sa.estado === 1
-                                            ? 'bg-green-100 text-green-700'
-                                            : 'bg-red-100 text-red-700'
-                                            }`}>
-                                            {sa.estado === 1 ? 'Activo' : 'Inactivo'}
-                                        </span>
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-900">
+                                            {user.nombreUsuario} {user.apellidos || user.apellidoUsuario}
+                                        </p>
+                                        <p className="text-xs text-gray-500">@{user.nombreUsuarioLogin}</p>
                                     </div>
                                 </div>
-                            );
-                        })}
-                        {superAdmins.length === 0 && (
-                            <p className="text-center text-gray-400 py-8">No hay super admins registrados</p>
+                                <div className="flex flex-col items-end gap-1">
+                                    <span className="text-xs text-gray-500">
+                                        Suc: {user.idSucursal || user.id_sucursal || '-'}
+                                    </span>
+                                    <span className={`text-xs font-medium px-2 py-1 rounded ${user.estado === 1
+                                        ? 'bg-green-100 text-green-700'
+                                        : 'bg-red-100 text-red-700'
+                                        }`}>
+                                        {user.estado === 1 ? 'Activo' : 'Inactivo'}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                        {usuarios.length === 0 && (
+                            <p className="text-center text-gray-400 py-8">No hay clientes registrados</p>
                         )}
                     </div>
                 </ChartContainer>
+            </div>
+
+            {/* Footer Info */}
+            <div className="bg-gray-50 rounded-xl p-4 text-center text-sm text-gray-500">
+                <p>
+                    <FaCalendarAlt className="inline mr-2" />
+                    Última actualización: {new Date().toLocaleString('es-PE')}
+                </p>
             </div>
         </div>
     );
