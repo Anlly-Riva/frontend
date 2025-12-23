@@ -73,7 +73,7 @@ axiosInstance.interceptors.response.use(
                 console.warn('⚠️ User Session Expired - Redirecting to /login');
                 localStorage.removeItem('authToken');
                 localStorage.removeItem('user');
-                window.location.href = '/superadmin';
+                window.location.href = '/login';
             }
         }
         return Promise.reject(error);

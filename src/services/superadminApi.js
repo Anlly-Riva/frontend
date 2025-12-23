@@ -1,7 +1,7 @@
 import axiosInstance from '../config/axios';
 import axios from 'axios'; // Import direct axios to bypass instance interceptors for mixed-context calls
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9090';
+const API_URL = import.meta.env.VITE_API_URL || 'http://comidas.spring.informaticapp.com:2052';
 
 // Helper to get SuperAdmin headers manually
 const getSuperAdminHeaders = () => {
