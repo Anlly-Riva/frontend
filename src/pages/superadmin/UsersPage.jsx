@@ -205,7 +205,7 @@ const UsersPage = () => {
                                     </td>
                                     <td className="p-4 text-right">
                                         <div className="flex justify-end gap-2">
-                                            <button
+                                            {/* <button
                                                 onClick={() => toggleEstadoMutation.mutate(superAdmin)}
                                                 className={`p-2 hover:bg-gray-100 rounded transition-colors ${superAdmin.estado === 1 ? 'text-green-600 hover:text-green-700' : 'text-gray-400 hover:text-gray-600'
                                                     }`}
@@ -213,7 +213,7 @@ const UsersPage = () => {
                                                 disabled={toggleEstadoMutation.isPending}
                                             >
                                                 {superAdmin.estado === 1 ? <FaToggleOn size={20} /> : <FaToggleOff size={20} />}
-                                            </button>
+                                            </button> */}
                                             <button
                                                 onClick={() => { setEditingUser(superAdmin); setIsModalOpen(true); }}
                                                 className="p-2 hover:bg-gray-100 rounded text-gray-500 hover:text-blue-600 transition-colors"
@@ -221,7 +221,7 @@ const UsersPage = () => {
                                             >
                                                 <FaEdit />
                                             </button>
-                                            <button
+                                            {/* <button
                                                 onClick={() => {
                                                     if (window.confirm('¿Estás seguro de eliminar este super admin?')) {
                                                         deleteMutation.mutate(superAdmin.id_superadmin);
@@ -231,7 +231,7 @@ const UsersPage = () => {
                                                 title="Eliminar"
                                             >
                                                 <FaTrash />
-                                            </button>
+                                            </button> */}
                                         </div>
                                     </td>
                                 </tr>
