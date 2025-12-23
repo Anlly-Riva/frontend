@@ -165,6 +165,11 @@ export const superadminApi = {
     deleteSuperAdmin: async (id) => {
         await superAdminsAPI.delete(id);
     },
+    // Toggle estado - envía solo el campo estado para evitar error 400
+    toggleEstadoSuperAdmin: async (id, nuevoEstado) => {
+        const response = await api.patch(`/restful/superadmin/super-admins/${id}/estado`, { estado: nuevoEstado });
+        return response.data;
+    },
 
     // Usuarios del Sistema (Clientes, Empleados, etc) - Endpoints para SuperAdmin
     getUsuarios: async () => {
@@ -206,6 +211,25 @@ export const superadminApi = {
     },
     deleteUsuario: async (id) => {
         await api.delete(`/restful/superadmin/usuarios/${id}`);
+    },
+    // Toggle estado usuario
+    toggleEstadoUsuario: async (id, nuevoEstado) => {
+        const response = await api.patch(`/restful/superadmin/usuarios/${id}/estado`, { estado: nuevoEstado });
+        return response.data;
+    },
+
+    // Bitácora / Auditoría
+    getBitacora: async () => {
+        const response = await api.get('/restful/superadmin/bitacora');
+        return response.data;
+    },
+    getBitacoraPorUsuario: async (idUsuario) => {
+        const response = await api.get(`/restful/superadmin/bitacora/usuario/${idUsuario}`);
+        return response.data;
+    },
+    getBitacoraPorTabla: async (tabla) => {
+        const response = await api.get(`/restful/superadmin/bitacora/tabla/${tabla}`);
+        return response.data;
     },
 
     // Sucursales - Usando endpoints de SuperAdmin para evitar 403

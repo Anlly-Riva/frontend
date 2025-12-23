@@ -1,29 +1,61 @@
 import { useState, useEffect } from 'react';
-import { restaurantesAPI } from '../../services/superadminApi';
-import { FaStore, FaEye, FaTimes, FaCheck, FaBan, FaMapMarkerAlt, FaMoneyBillWave, FaPercentage, FaCalendarAlt, FaEdit, FaSave, FaGlobe } from 'react-icons/fa';
+import { restaurantesAPI, superadminApi } from '../../services/superadminApi';
+import { FaStore, FaEye, FaTimes, FaCheck, FaBan, FaMapMarkerAlt, FaMoneyBillWave, FaPercentage, FaCalendarAlt, FaEdit, FaSave, FaGlobe, FaSearch, FaUser } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
 const RestaurantesPage = () => {
     const [restaurantes, setRestaurantes] = useState([]);
+    const [usuarios, setUsuarios] = useState([]);
     const [selectedRestaurante, setSelectedRestaurante] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState({});
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
-        loadRestaurantes();
+        loadData();
     }, []);
 
-    const loadRestaurantes = async () => {
+    const loadData = async () => {
         try {
-            const response = await restaurantesAPI.getAll();
-            setRestaurantes(response.data);
+            const [restResponse, usersData] = await Promise.all([
+                restaurantesAPI.getAll(),
+                superadminApi.getUsuarios()
+            ]);
+            setRestaurantes(restResponse.data);
+            setUsuarios(usersData);
         } catch (error) {
-            toast.error('Error al cargar restaurantes');
+            console.error('Error cargando datos:', error);
+            toast.error('Error al cargar datos');
         } finally {
             setLoading(false);
         }
     };
+
+    // Buscar usuario relacionado por id_sucursal (asumiendo que sucursal tiene id_restaurante)
+    const getUsuarioRelacionado = (restaurante) => {
+        // Buscar usuarios que tengan sucursal asociada a este restaurante
+        const usuario = usuarios.find(u => {
+            // Si el usuario tiene idSucursal y coincide con algún patrón del restaurante
+            return u.idSucursal === restaurante.id_restaurante ||
+                u.id_sucursal === restaurante.id_restaurante;
+        });
+        return usuario;
+    };
+
+    // Filtrar restaurantes por búsqueda
+    const filteredRestaurantes = restaurantes
+        .filter(r => {
+            const usuario = getUsuarioRelacionado(r);
+            const searchLower = searchTerm.toLowerCase();
+            return (
+                r.razon_social?.toLowerCase().includes(searchLower) ||
+                r.ruc?.includes(searchTerm) ||
+                usuario?.nombreUsuario?.toLowerCase().includes(searchLower) ||
+                usuario?.nombreUsuarioLogin?.toLowerCase().includes(searchLower)
+            );
+        })
+        .sort((a, b) => (b.id_restaurante || 0) - (a.id_restaurante || 0));
 
     const handleOpenModal = (restaurante) => {
         setSelectedRestaurante(restaurante);
@@ -96,67 +128,93 @@ const RestaurantesPage = () => {
                     <p className="text-gray-600 text-sm">Lista de todos los restaurantes en el sistema</p>
                 </div>
                 <div className="text-right">
-                    <p className="text-3xl font-bold text-blue-600">{restaurantes.length}</p>
-                    <p className="text-sm text-gray-500">Total Clientes</p>
+                    <p className="text-3xl font-bold text-blue-600">{filteredRestaurantes.length}</p>
+                    <p className="text-sm text-gray-500">Clientes totales</p>
+                </div>
+            </div>
+
+            {/* Search Input */}
+            <div className="mb-6">
+                <div className="flex items-center gap-2 bg-white px-4 py-3 rounded-lg border border-gray-200 shadow-sm w-full md:w-96">
+                    <FaSearch className="text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Buscar por nombre, RUC o usuario..."
+                        className="bg-transparent border-none outline-none w-full text-sm"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                 </div>
             </div>
 
             {loading ? (
                 <div className="text-center py-12">Cargando...</div>
-            ) : restaurantes.length === 0 ? (
+            ) : filteredRestaurantes.length === 0 ? (
                 <div className="bg-white rounded-lg shadow p-12 text-center">
                     <FaStore className="text-6xl text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No hay restaurantes registrados</p>
+                    <p className="text-gray-500">No hay restaurantes que coincidan con la búsqueda</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {restaurantes.map((restaurante) => (
-                        <div key={restaurante.id_restaurante} className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-200">
-                            {/* Header Card */}
-                            <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4 text-white">
-                                <div className="flex items-center space-x-3">
-                                    <FaStore className="text-2xl" />
-                                    <div>
-                                        <h3 className="font-bold text-lg">{restaurante.razon_social}</h3>
-                                        <p className="text-xs text-blue-100">RUC: {restaurante.ruc}</p>
+                    {filteredRestaurantes.map((restaurante) => {
+                        const usuarioRelacionado = getUsuarioRelacionado(restaurante);
+                        return (
+                            <div key={restaurante.id_restaurante} className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-200">
+                                {/* Header Card */}
+                                <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4 text-white">
+                                    <div className="flex items-center space-x-3">
+                                        <FaStore className="text-2xl" />
+                                        <div className="flex-1">
+                                            <h3 className="font-bold text-lg">{restaurante.razon_social}</h3>
+                                            <p className="text-xs text-blue-100">RUC: {restaurante.ruc}</p>
+                                        </div>
+                                    </div>
+                                    {/* Usuario relacionado */}
+                                    {usuarioRelacionado && (
+                                        <div className="mt-2 flex items-center gap-2 bg-white/20 rounded-lg px-2 py-1">
+                                            <FaUser className="text-xs" />
+                                            <span className="text-xs">
+                                                {usuarioRelacionado.nombreUsuario} (@{usuarioRelacionado.nombreUsuarioLogin})
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Body Card */}
+                                <div className="p-4 space-y-2">
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-600">Dirección:</span>
+                                        <span className="font-medium text-gray-900 text-right truncate max-w-[150px]" title={restaurante.direccion_principal}>{restaurante.direccion_principal || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-600">Moneda:</span>
+                                        <span className="font-medium text-gray-900">{restaurante.moneda} ({restaurante.simbolo_moneda})</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-600">IGV:</span>
+                                        <span className="font-medium text-gray-900">{restaurante.tasa_igv}%</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-600">Estado:</span>
+                                        <span className={`px-2 py-1 text-xs rounded-full ${restaurante.estado === 1 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                            <span>{restaurante.estado === 1 ? 'Activo' : 'Inactivo'}</span>
+                                        </span>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Body Card */}
-                            <div className="p-4 space-y-2">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600">Dirección:</span>
-                                    <span className="font-medium text-gray-900 text-right truncate max-w-[150px]" title={restaurante.direccion_principal}>{restaurante.direccion_principal || 'N/A'}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600">Moneda:</span>
-                                    <span className="font-medium text-gray-900">{restaurante.moneda} ({restaurante.simbolo_moneda})</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600">IGV:</span>
-                                    <span className="font-medium text-gray-900">{restaurante.tasa_igv}%</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600">Estado:</span>
-                                    <span className={`px-2 py-1 text-xs rounded-full ${restaurante.estado === 1 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                        <span>{restaurante.estado === 1 ? 'Activo' : 'Inactivo'}</span>
-                                    </span>
+                                {/* Footer Card */}
+                                <div className="bg-gray-50 px-4 py-3 border-t">
+                                    <button
+                                        onClick={() => handleOpenModal(restaurante)}
+                                        className="w-full text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center justify-center space-x-2"
+                                    >
+                                        <FaEye />
+                                        <span>Ver Detalles</span>
+                                    </button>
                                 </div>
                             </div>
-
-                            {/* Footer Card */}
-                            <div className="bg-gray-50 px-4 py-3 border-t">
-                                <button
-                                    onClick={() => handleOpenModal(restaurante)}
-                                    className="w-full text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center justify-center space-x-2"
-                                >
-                                    <FaEye />
-                                    <span>Ver Detalles</span>
-                                </button>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 

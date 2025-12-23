@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { FaUserPlus, FaEdit, FaTrash, FaSearch, FaUser, FaKey, FaSave } from 'react-icons/fa';
+import { FaUserPlus, FaEdit, FaTrash, FaSearch, FaUser, FaKey, FaSave, FaToggleOn, FaToggleOff } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { superadminApi } from '../../services/superadminApi';
@@ -45,6 +45,24 @@ const ClientesPage = () => {
         }
     });
 
+    // Toggle Estado Mutation
+    const toggleEstadoMutation = useMutation({
+        mutationFn: async (usuario) => {
+            const id = usuario.idUsuario || usuario.id_usuario;
+            const nuevoEstado = usuario.estado === 1 ? 0 : 1;
+            return superadminApi.toggleEstadoUsuario(id, nuevoEstado);
+        },
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries(['usuarios']);
+            const nuevoEstado = variables.estado === 1 ? 0 : 1;
+            toast.success(`Cliente ${nuevoEstado === 1 ? 'activado' : 'desactivado'} correctamente`);
+        },
+        onError: (error) => {
+            console.error('Toggle error:', error);
+            toast.error('Error al cambiar estado: ' + (error.response?.data?.message || error.message));
+        }
+    });
+
     const handleSubmit = (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
@@ -76,13 +94,19 @@ const ClientesPage = () => {
         setIsModalOpen(true);
     };
 
-    // Filter by name, login, or DNI
-    const filteredUsuarios = usuarios.filter(u =>
-        u.nombreUsuario?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.nombreUsuarioLogin?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.dniUsuario?.includes(searchTerm) ||
-        u.apellidoUsuario?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Filter by name, login, or DNI - Ordenar por ID descendente (último primero)
+    const filteredUsuarios = usuarios
+        .filter(u =>
+            u.nombreUsuario?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            u.nombreUsuarioLogin?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            u.dniUsuario?.includes(searchTerm) ||
+            u.apellidoUsuario?.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+        .sort((a, b) => {
+            const idA = a.idUsuario || a.id_usuario || 0;
+            const idB = b.idUsuario || b.id_usuario || 0;
+            return idB - idA;
+        });
 
     // Format date
     const formatDate = (dateStr) => {
@@ -182,14 +206,22 @@ const ClientesPage = () => {
                                     </td>
                                     <td className="p-4">
                                         <span className={`px-2 py-1 rounded text-xs font-medium border ${usuario.estado === 1
-                                                ? 'bg-green-50 text-green-700 border-green-100'
-                                                : 'bg-gray-100 text-gray-600 border-gray-200'
+                                            ? 'bg-green-50 text-green-700 border-green-100'
+                                            : 'bg-gray-100 text-gray-600 border-gray-200'
                                             }`}>
                                             {usuario.estado === 1 ? 'Activo' : 'Inactivo'}
                                         </span>
                                     </td>
                                     <td className="p-4 text-right">
                                         <div className="flex justify-end gap-2">
+                                            <button
+                                                onClick={() => toggleEstadoMutation.mutate(usuario)}
+                                                className={`p-2 hover:bg-gray-100 rounded transition-colors ${usuario.estado === 1 ? 'text-green-600 hover:text-green-700' : 'text-gray-400 hover:text-gray-600'}`}
+                                                title={usuario.estado === 1 ? 'Desactivar' : 'Activar'}
+                                                disabled={toggleEstadoMutation.isPending}
+                                            >
+                                                {usuario.estado === 1 ? <FaToggleOn size={20} /> : <FaToggleOff size={20} />}
+                                            </button>
                                             <button
                                                 onClick={() => openEditModal(usuario)}
                                                 className="p-2 hover:bg-gray-100 rounded text-gray-500 hover:text-blue-600 transition-colors"

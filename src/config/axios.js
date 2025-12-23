@@ -1,10 +1,10 @@
 import axios from 'axios';
 
 // Use environment variable or default to the provided API URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081';
+//const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081';
 
 
-//const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://comidas.spring.informaticapp.com:2023';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://comidas.spring.informaticapp.com:2052';
 
 
 
@@ -13,7 +13,7 @@ const axiosInstance = axios.create({
     headers: {
         'Content-Type': 'application/json'
     },
-    timeout: 10000
+    timeout: 60000 // 60 segundos para operaciones lentas como envío de email
 });
 
 // Request interceptor to add the auth token header to requests
@@ -73,7 +73,7 @@ axiosInstance.interceptors.response.use(
                 console.warn('⚠️ User Session Expired - Redirecting to /login');
                 localStorage.removeItem('authToken');
                 localStorage.removeItem('user');
-                window.location.href = '/login';
+                window.location.href = '/superadmin';
             }
         }
         return Promise.reject(error);

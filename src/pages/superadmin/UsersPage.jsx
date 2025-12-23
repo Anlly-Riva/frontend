@@ -49,14 +49,12 @@ const UsersPage = () => {
         }
     });
 
-    // Toggle Estado Mutation
+    // Toggle Estado Mutation - Usa endpoint específico para evitar error 400
     const toggleEstadoMutation = useMutation({
         mutationFn: async (superAdmin) => {
+            const id = superAdmin.id_superadmin || superAdmin.idSuperAdmin;
             const nuevoEstado = superAdmin.estado === 1 ? 0 : 1;
-            return superadminApi.updateSuperAdmin(superAdmin.id_superadmin, {
-                ...superAdmin,
-                estado: nuevoEstado
-            });
+            return superadminApi.toggleEstadoSuperAdmin(id, nuevoEstado);
         },
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries(['superAdmins']);
@@ -64,7 +62,8 @@ const UsersPage = () => {
             toast.success(`Super Admin ${nuevoEstado === 1 ? 'activado' : 'desactivado'} correctamente`);
         },
         onError: (error) => {
-            toast.error('Error al cambiar estado: ' + error.message);
+            console.error('Toggle error:', error);
+            toast.error('Error al cambiar estado: ' + (error.response?.data?.message || error.message));
         }
     });
 
@@ -116,10 +115,17 @@ const UsersPage = () => {
         mutation.mutate(data);
     };
 
-    const filteredSuperAdmins = superAdmins.filter(sa =>
-        sa.nombres?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        sa.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredSuperAdmins = superAdmins
+        .filter(sa =>
+            sa.nombres?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            sa.email?.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+        .sort((a, b) => {
+            // Ordenar por ID descendente (último registrado primero)
+            const idA = a.id_superadmin || a.idSuperAdmin || 0;
+            const idB = b.id_superadmin || b.idSuperAdmin || 0;
+            return idB - idA;
+        });
 
     return (
         <div className="space-y-6">
