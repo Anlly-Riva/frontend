@@ -265,7 +265,7 @@ const CrearClientePage = () => {
                                 ) : (
                                     restaurantes.map(rest => (
                                         <option key={rest.id_restaurante} value={rest.id_restaurante}>
-                                            {rest.razon_social} (RUC: {rest.ruc})
+                                            ID: {rest.id_restaurante} - {rest.razon_social} (RUC: {rest.ruc})
                                         </option>
                                     ))
                                 )}
