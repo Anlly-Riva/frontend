@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 const RestaurantesPage = () => {
     const [restaurantes, setRestaurantes] = useState([]);
     const [usuarios, setUsuarios] = useState([]);
+    const [sucursales, setSucursales] = useState([]);
     const [selectedRestaurante, setSelectedRestaurante] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
@@ -18,12 +19,19 @@ const RestaurantesPage = () => {
 
     const loadData = async () => {
         try {
-            const [restResponse, usersData] = await Promise.all([
+            // Load restaurants, users, AND branches to link them correctly
+            const [restResponse, usersData, sucursalesData] = await Promise.all([
                 restaurantesAPI.getAll(),
-                superadminApi.getUsuarios()
+                superadminApi.getUsuarios(),
+                superadminApi.getSucursales().catch(e => {
+                    console.warn('Could not fetch sucursales/todos, user linking might fail:', e);
+                    return [];
+                })
             ]);
+
             setRestaurantes(restResponse.data);
             setUsuarios(usersData);
+            setSucursales(Array.isArray(sucursalesData) ? sucursalesData : []);
         } catch (error) {
             console.error('Error cargando datos:', error);
             toast.error('Error al cargar datos');
@@ -32,91 +40,205 @@ const RestaurantesPage = () => {
         }
     };
 
-    // Buscar usuario relacionado por id_sucursal (asumiendo que sucursal tiene id_restaurante)
+    // Correctly link User -> Sucursal -> Restaurant
     const getUsuarioRelacionado = (restaurante) => {
-        // Buscar usuarios que tengan sucursal asociada a este restaurante
-        const usuario = usuarios.find(u => {
-            // Si el usuario tiene idSucursal y coincide con algún patrón del restaurante
-            return u.idSucursal === restaurante.id_restaurante ||
-                u.id_sucursal === restaurante.id_restaurante;
-        });
-        return usuario;
+        const idRest = restaurante.id_restaurante || restaurante.idRestaurante;
+
+        // Strategy A: Strict matching via 'sucursales' list
+        const misSucursales = sucursales.filter(s =>
+            (s.id_restaurante || s.idRestaurante) === idRest
+        );
+        const idsSucursales = misSucursales.map(s => s.id_sucursal || s.idSucursal);
+
+        if (idsSucursales.length > 0) {
+            const foundUser = usuarios.find(u => {
+                const userSucursalId = u.idSucursal || u.id_sucursal;
+                return idsSucursales.includes(userSucursalId);
+            });
+            if (foundUser) return foundUser;
+        }
+
+        // Strategy B: Fallback (Legacy/Direct matching)
+        // Checks if user.idSucursal DIRECTLY matches restaurant.idRestaurante
+        // This handles cases where 'sucursales' table might be empty or data is old.
+        return usuarios.find(u =>
+            (u.idSucursal || u.id_sucursal) === idRest
+        );
     };
 
     // Filtrar restaurantes por búsqueda
     const filteredRestaurantes = restaurantes
-        .filter(r => {
-            const usuario = getUsuarioRelacionado(r);
-            const searchLower = searchTerm.toLowerCase();
-            return (
-                r.nombre?.toLowerCase().includes(searchLower) ||
-                r.ruc?.includes(searchTerm) ||
-                usuario?.nombreUsuario?.toLowerCase().includes(searchLower) ||
-                usuario?.nombreUsuarioLogin?.toLowerCase().includes(searchLower)
-            );
-        })
-        .sort((a, b) => (b.id_restaurante || 0) - (a.id_restaurante || 0));
+        .filter(r =>
+            r.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            r.ruc?.includes(searchTerm) ||
+            getUsuarioRelacionado(r)?.nombreUsuario?.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+        .sort((a, b) => new Date(b.fecha_creacion || b.fecha_registro) - new Date(a.fecha_creacion || a.fecha_registro));
 
     const handleOpenModal = (restaurante) => {
         setSelectedRestaurante(restaurante);
-        setEditForm(restaurante);
+        setEditForm({});
         setIsEditing(false);
-    };
-
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setEditForm(prev => ({
-            ...prev,
-            [name]: value
-        }));
-    };
-
-    const handleSave = async () => {
-        try {
-            await restaurantesAPI.update(selectedRestaurante.id_restaurante, editForm);
-
-            // Actualizar lista localmente
-            setRestaurantes(restaurantes.map(r =>
-                r.id_restaurante === selectedRestaurante.id_restaurante
-                    ? { ...r, ...editForm }
-                    : r
-            ));
-
-            setSelectedRestaurante({ ...selectedRestaurante, ...editForm });
-            setIsEditing(false);
-            toast.success('Restaurante actualizado correctamente');
-        } catch (error) {
-            console.error('Error al actualizar:', error);
-            toast.error('Error al actualizar el restaurante');
-        }
     };
 
     const handleToggleEstado = async (restaurante) => {
         try {
+            const id = restaurante.id_restaurante || restaurante.idRestaurante;
+            if (!id) return;
+
             const nuevoEstado = restaurante.estado === 1 ? 0 : 1;
-            await restaurantesAPI.update(restaurante.id_restaurante, {
-                ...restaurante,
-                estado: nuevoEstado
-            });
 
-            toast.success(`Restaurante ${nuevoEstado === 1 ? 'activado' : 'desactivado'} correctamente`);
+            // Helper for strict date formatting (reused logic)
+            const formatForApi = (dateString) => {
+                if (!dateString) return null;
+                if (Array.isArray(dateString)) return null;
+                const str = String(dateString);
+                let formatted = str.replace('T', ' ');
+                if (formatted.split(':').length === 2) formatted += ':00';
+                if (formatted.includes('.')) formatted = formatted.split('.')[0];
+                return formatted;
+            };
 
-            // Actualizar lista localmente
-            setRestaurantes(restaurantes.map(r =>
-                r.id_restaurante === restaurante.id_restaurante
-                    ? { ...r, estado: nuevoEstado }
-                    : r
-            ));
+            const payload = {
+                id_restaurante: id, // Some backends might want it in body too, safety first for this specific check
+                nombre: restaurante.nombre,
+                ruc: restaurante.ruc,
+                email_contacto: restaurante.email_contacto || restaurante.emailContacto,
+                emailContacto: restaurante.email_contacto || restaurante.emailContacto,
+                direccion: restaurante.direccion_principal || restaurante.direccionPrincipal || restaurante.direccion,
+                direccion_principal: restaurante.direccion_principal || restaurante.direccionPrincipal,
+                direccionPrincipal: restaurante.direccion_principal || restaurante.direccionPrincipal,
+                simbolo_moneda: restaurante.simbolo_moneda || restaurante.simboloMoneda || 'S/',
+                simboloMoneda: restaurante.simbolo_moneda || restaurante.simboloMoneda || 'S/',
+                tasa_igv: restaurante.tasa_igv || restaurante.tasaIgv || 0,
+                tasaIgv: restaurante.tasa_igv || restaurante.tasaIgv || 0,
+                logo_url: restaurante.logo_url || restaurante.logoUrl,
+                logoUrl: restaurante.logo_url || restaurante.logoUrl,
 
-            // Actualizar modal si está abierto
-            if (selectedRestaurante?.id_restaurante === restaurante.id_restaurante) {
-                const updatedRestaurante = { ...selectedRestaurante, estado: nuevoEstado };
-                setSelectedRestaurante(updatedRestaurante);
-                setEditForm(updatedRestaurante);
+                // IMPORTANT: The state change
+                estado: nuevoEstado,
+
+                fecha_creacion: formatForApi(restaurante.fecha_creacion || restaurante.fechaCreacion),
+                fechaCreacion: formatForApi(restaurante.fecha_creacion || restaurante.fechaCreacion),
+                fecha_vencimiento: formatForApi(restaurante.fecha_vencimiento || restaurante.fechaVencimiento),
+                fechaVencimiento: formatForApi(restaurante.fecha_vencimiento || restaurante.fechaVencimiento),
+                fecha_registro: formatForApi(restaurante.fecha_registro || restaurante.fechaRegistro),
+                fechaRegistro: formatForApi(restaurante.fecha_registro || restaurante.fechaRegistro),
+            };
+
+            await restaurantesAPI.update(id, payload);
+
+            toast.success(`Restaurante ${nuevoEstado === 1 ? 'activado' : 'desactivado'} exitosamente`);
+            loadData();
+
+            // If the modal is open for this one, update it too
+            if (selectedRestaurante && (selectedRestaurante.id_restaurante === id || selectedRestaurante.idRestaurante === id)) {
+                setSelectedRestaurante({ ...selectedRestaurante, estado: nuevoEstado });
             }
         } catch (error) {
             console.error('Error al cambiar estado:', error);
-            toast.error('Error al cambiar el estado del restaurante');
+            toast.error('Error al cambiar el estado. Verifique la consola.');
+        }
+    };
+
+    const handleInputChange = (e) => {
+        setEditForm({
+            ...editForm,
+            [e.target.name]: e.target.value
+        });
+    };
+
+    const handleSave = async () => {
+        try {
+            const id = selectedRestaurante.id_restaurante || selectedRestaurante.idRestaurante;
+            if (!id) {
+                toast.error('Error: No se encuentra el ID del restaurante');
+                return;
+            }
+
+            // Helper for strict date formatting (yyyy-MM-dd HH:mm:ss)
+            const formatForApi = (dateString) => {
+                if (!dateString) return null;
+                // If it's already an array (Spring default sometimes), let it be? No, likely string.
+                if (Array.isArray(dateString)) return null; // Or handle if needed
+
+                // Ensure it's a string
+                const str = String(dateString);
+
+                // If it contains "T", replace it. Append seconds if missing.
+                let formatted = str.replace('T', ' ');
+                if (formatted.split(':').length === 2) {
+                    formatted += ':00';
+                }
+                // Truncate milliseconds if present (e.g. .000 or .123)
+                if (formatted.includes('.')) {
+                    formatted = formatted.split('.')[0];
+                }
+                return formatted;
+            };
+
+            // Format dates ONCE
+            const cleanFechaCreacion = formatForApi(selectedRestaurante.fecha_creacion || selectedRestaurante.fechaCreacion);
+            const cleanFechaVencimiento = formatForApi(selectedRestaurante.fecha_vencimiento || selectedRestaurante.fechaVencimiento);
+            const cleanFechaRegistro = formatForApi(selectedRestaurante.fecha_registro || selectedRestaurante.fechaRegistro);
+
+            // Construct CLEAN payload (scalers only) to avoid backend confusion with nested objects
+            const payload = {
+                // IDs - REMOVED from body to avoid conflicts (ID is in URL)
+                // id_restaurante: id,
+                // idRestaurante: id,
+
+                // Standard Info (Merge editForm > selectedRestaurante)
+                nombre: editForm.nombre || selectedRestaurante.nombre,
+                ruc: editForm.ruc || selectedRestaurante.ruc,
+
+                email_contacto: editForm.emailContacto || editForm.email_contacto || selectedRestaurante.email_contacto || selectedRestaurante.emailContacto,
+                emailContacto: editForm.emailContacto || editForm.email_contacto || selectedRestaurante.email_contacto || selectedRestaurante.emailContacto,
+
+                // Send variants of address keys to hit the target
+                direccion: editForm.direccionPrincipal || editForm.direccion_principal || selectedRestaurante.direccion_principal || selectedRestaurante.direccionPrincipal,
+                direccion_principal: editForm.direccionPrincipal || editForm.direccion_principal || selectedRestaurante.direccion_principal || selectedRestaurante.direccionPrincipal,
+                direccionPrincipal: editForm.direccionPrincipal || editForm.direccion_principal || selectedRestaurante.direccion_principal || selectedRestaurante.direccionPrincipal,
+
+                simbolo_moneda: editForm.simboloMoneda || editForm.simbolo_moneda || selectedRestaurante.simbolo_moneda || selectedRestaurante.simboloMoneda || 'S/',
+                simboloMoneda: editForm.simboloMoneda || editForm.simbolo_moneda || selectedRestaurante.simbolo_moneda || selectedRestaurante.simboloMoneda || 'S/',
+
+                tasa_igv: editForm.tasaIgv || editForm.tasa_igv || selectedRestaurante.tasa_igv || selectedRestaurante.tasaIgv || 0,
+                tasaIgv: editForm.tasaIgv || editForm.tasa_igv || selectedRestaurante.tasa_igv || selectedRestaurante.tasaIgv || 0,
+
+                logo_url: editForm.logoUrl || editForm.logo_url || selectedRestaurante.logo_url || selectedRestaurante.logoUrl,
+                logoUrl: editForm.logoUrl || editForm.logo_url || selectedRestaurante.logo_url || selectedRestaurante.logoUrl,
+
+                estado: selectedRestaurante.estado, // Usually handled by toggle, but keep for consistency
+
+                // Clean Dates
+                fecha_creacion: cleanFechaCreacion,
+                fechaCreacion: cleanFechaCreacion,
+                fecha_vencimiento: cleanFechaVencimiento,
+                fechaVencimiento: cleanFechaVencimiento,
+                fecha_registro: cleanFechaRegistro,
+                fechaRegistro: cleanFechaRegistro
+            };
+
+            console.log("📤 Sending Update Payload:", payload);
+            await restaurantesAPI.update(id, payload);
+
+            toast.success('Restaurante actualizado');
+            setIsEditing(false);
+            loadData();
+
+            // Update local state
+            const updated = { ...selectedRestaurante, ...payload };
+            // Ensure Snake Case properties are also updated for display
+            if (payload.direccionPrincipal) updated.direccion_principal = payload.direccionPrincipal;
+            if (payload.tasaIgv) updated.tasa_igv = payload.tasaIgv;
+            if (payload.logoUrl) updated.logo_url = payload.logoUrl;
+
+            setSelectedRestaurante(updated);
+
+        } catch (error) {
+            console.error('Error actualizando:', error);
+            toast.error('Error al actualizar');
         }
     };
 
@@ -184,15 +306,15 @@ const RestaurantesPage = () => {
                                 <div className="p-4 space-y-2">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-600">Dirección:</span>
-                                        <span className="font-medium text-gray-900 text-right truncate max-w-[150px]" title={restaurante.direccion_principal}>{restaurante.direccion_principal || 'N/A'}</span>
+                                        <span className="font-medium text-gray-900 text-right truncate max-w-[150px]" title={restaurante.direccion || restaurante.direccion_principal || restaurante.direccionPrincipal}>{restaurante.direccion || restaurante.direccion_principal || restaurante.direccionPrincipal || 'N/A'}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-600">Moneda:</span>
-                                        <span className="font-medium text-gray-900">{restaurante.simbolo_moneda || 'S/'}</span>
+                                        <span className="font-medium text-gray-900">{restaurante.simbolo_moneda || restaurante.simboloMoneda || 'S/'}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-600">IGV:</span>
-                                        <span className="font-medium text-gray-900">{restaurante.tasa_igv}%</span>
+                                        <span className="font-medium text-gray-900">{restaurante.tasa_igv || restaurante.tasaIgv || 0}%</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-600">Estado:</span>
@@ -217,7 +339,6 @@ const RestaurantesPage = () => {
                     })}
                 </div>
             )}
-
 
             {/* Modal de Detalles */}
             {selectedRestaurante && (
@@ -289,38 +410,72 @@ const RestaurantesPage = () => {
                                             <label className="text-xs text-gray-500 font-medium uppercase tracking-wide">Dirección</label>
                                             <input
                                                 type="text"
-                                                name="direccion_principal"
-                                                value={editForm.direccion_principal || ''}
+                                                name="direccionPrincipal"
+                                                value={editForm.direccionPrincipal || editForm.direccion_principal || ''}
                                                 onChange={handleInputChange}
                                                 className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                                             />
                                         </div>
                                     ) : (
-                                        <DetailItem icon={<FaMapMarkerAlt />} label="Dirección" value={selectedRestaurante.direccion_principal} />
+                                        <DetailItem icon={<FaMapMarkerAlt />} label="Dirección" value={selectedRestaurante.direccion || selectedRestaurante.direccion_principal || selectedRestaurante.direccionPrincipal} />
                                     )}
 
-                                    <DetailItem icon={<FaCalendarAlt />} label="Fecha Registro" value={selectedRestaurante.fecha_registro ? new Date(selectedRestaurante.fecha_registro).toLocaleDateString() : 'N/A'} />
+                                    <DetailItem
+                                        icon={<FaCalendarAlt />}
+                                        label="Fecha Registro"
+                                        value={
+                                            (selectedRestaurante.fecha_registro || selectedRestaurante.fecha_creacion || selectedRestaurante.fechaCreacion)
+                                                ? new Date(selectedRestaurante.fecha_registro || selectedRestaurante.fecha_creacion || selectedRestaurante.fechaCreacion).toLocaleDateString()
+                                                : 'N/A'
+                                        }
+                                    />
+                                    <DetailItem
+                                        icon={<FaCalendarAlt />}
+                                        label="Fecha Vencimiento"
+                                        value={
+                                            (selectedRestaurante.fecha_vencimiento || selectedRestaurante.fechaVencimiento)
+                                                ? new Date(selectedRestaurante.fecha_vencimiento || selectedRestaurante.fechaVencimiento).toLocaleDateString()
+                                                : 'N/A'
+                                        }
+                                    />
                                 </div>
 
                                 <div className="space-y-4">
                                     <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2">
+                                        <FaUser className="text-purple-500" /> Administrador
+                                    </h3>
+                                    {(() => {
+                                        const admin = getUsuarioRelacionado(selectedRestaurante);
+                                        return admin ? (
+                                            <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
+                                                <p className="font-bold text-gray-900">{admin.nombreUsuario} {admin.apellidoUsuario || admin.apellido_usuario || ''}</p>
+                                                <p className="text-xs text-gray-500">@{admin.nombreUsuarioLogin}</p>
+                                                <p className="text-xs text-gray-500 mt-1">DNI: {admin.dniUsuario || admin.dni_usuario || 'N/A'}</p>
+                                                <p className="text-xs text-gray-500">Tel: {admin.telefonoUsuario || admin.telefono_usuario || 'N/A'}</p>
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-gray-400 italic">No asignado</p>
+                                        );
+                                    })()}
+
+                                    <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2 mt-6">
                                         <FaMoneyBillWave className="text-green-500" /> Configuración
                                     </h3>
-                                    <DetailItem icon={<FaMoneyBillWave />} label="Moneda" value={selectedRestaurante.simbolo_moneda || 'S/'} />
+                                    <DetailItem icon={<FaMoneyBillWave />} label="Moneda" value={selectedRestaurante.simbolo_moneda || selectedRestaurante.simboloMoneda || 'S/'} />
 
                                     {isEditing ? (
                                         <div className="space-y-1">
                                             <label className="text-xs text-gray-500 font-medium uppercase tracking-wide">Tasa IGV (%)</label>
                                             <input
                                                 type="number"
-                                                name="tasa_igv"
-                                                value={editForm.tasa_igv || 0}
+                                                name="tasaIgv"
+                                                value={editForm.tasaIgv || editForm.tasa_igv || 0}
                                                 onChange={handleInputChange}
                                                 className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                                             />
                                         </div>
                                     ) : (
-                                        <DetailItem icon={<FaPercentage />} label="Tasa IGV" value={`${selectedRestaurante.tasa_igv}%`} />
+                                        <DetailItem icon={<FaPercentage />} label="Tasa IGV" value={`${selectedRestaurante.tasa_igv || selectedRestaurante.tasaIgv || 0}%`} />
                                     )}
 
                                     {isEditing ? (
@@ -328,18 +483,18 @@ const RestaurantesPage = () => {
                                             <label className="text-xs text-gray-500 font-medium uppercase tracking-wide">URL del Logo</label>
                                             <input
                                                 type="text"
-                                                name="logo_url"
-                                                value={editForm.logo_url || ''}
+                                                name="logoUrl"
+                                                value={editForm.logoUrl || editForm.logo_url || ''}
                                                 onChange={handleInputChange}
                                                 className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                                                 placeholder="https://..."
                                             />
                                         </div>
                                     ) : (
-                                        <DetailItem icon={<FaGlobe />} label="URL Logo" value={selectedRestaurante.logo_url || 'No configurado'} />
+                                        <DetailItem icon={<FaGlobe />} label="URL Logo" value={selectedRestaurante.logo_url || selectedRestaurante.logoUrl || 'No configurado'} />
                                     )}
 
-                                    <DetailItem icon={<FaStore />} label="ID Sistema" value={selectedRestaurante.id_restaurante} />
+                                    <DetailItem icon={<FaStore />} label="ID Sistema" value={selectedRestaurante.id_restaurante || selectedRestaurante.idRestaurante} />
                                 </div>
                             </div>
 
@@ -360,6 +515,7 @@ const RestaurantesPage = () => {
                                     </button>
                                 </div>
                             )}
+
                         </div>
                     </div>
                 </div>

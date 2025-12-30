@@ -136,25 +136,56 @@ const CrearClientePage = () => {
         const data = {
             ...rawData,
             rolId: parseInt(rawData.rolId),
-            estado: 1 // Default active
+            estado: 1, // Default active
+
+            // Map keys to match Database/Entity structure
+            // DB: apellido_usuario -> Java: apellidoUsuario
+            apellidoUsuario: rawData.apellidos,
+            apellido_usuario: rawData.apellidos,
+
+            // DB: telefono_usuario -> Java: telefonoUsuario
+            telefonoUsuario: rawData.telefono,
+            telefono_usuario: rawData.telefono,
+
+            // DB: dni_usuario -> Java: dniUsuario
+            dniUsuario: rawData.dniUsuario,
+            dni_usuario: rawData.dniUsuario,
+
+            // DB: nombre_usuario -> Java: nombreUsuario
+            nombreUsuario: rawData.nombreUsuario,
+            nombre_usuario: rawData.nombreUsuario,
+
+            // DB: nombre_usuario_login -> Java: nombreUsuarioLogin
+            nombreUsuarioLogin: rawData.nombreUsuarioLogin,
+            nombre_usuario_login: rawData.nombreUsuarioLogin,
+
+            contrasenaUsuario: rawData.contrasena,
+            contrasena_usuario: rawData.contrasena
         };
 
         if (idSucursalFinal) {
             data.idSucursal = idSucursalFinal;
+            data.id_sucursal = idSucursalFinal;
         } else {
-            // Fallback - use restaurant ID (may fail if backend requires sucursal)
+            // Fallback - use restaurant ID
             data.id_restaurante = parseInt(rawData.idRestaurantSelection);
+            data.idRestaurante = parseInt(rawData.idRestaurantSelection);
             delete data.idSucursal;
+            delete data.id_sucursal;
         }
 
-        // Ensure we don't send both
+        // Ensure we don't send both if one is present (logic kept from previous, but clarified)
         if (data.idSucursal) {
             delete data.id_restaurante;
+            delete data.idRestaurante;
         }
 
         // Remove form-only fields
         delete data.idSucursalManual;
         delete data.idRestaurantSelection;
+        delete data.apellidos; // cleanup
+        delete data.telefono; // cleanup
+        delete data.contrasena; // cleanup
 
         mutation.mutate(data);
     };
@@ -264,8 +295,8 @@ const CrearClientePage = () => {
                                     <option disabled>No hay restaurantes disponibles</option>
                                 ) : (
                                     restaurantes.map(rest => (
-                                        <option key={rest.id_restaurante} value={rest.id_restaurante}>
-                                            ID: {rest.id_restaurante} - {rest.razon_social} (RUC: {rest.ruc})
+                                        <option key={rest.id_restaurante || rest.idRestaurante} value={rest.id_restaurante || rest.idRestaurante}>
+                                            ID: {rest.id_restaurante || rest.idRestaurante} - {rest.nombre} (RUC: {rest.ruc})
                                         </option>
                                     ))
                                 )}

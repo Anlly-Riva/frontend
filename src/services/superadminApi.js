@@ -302,3 +302,11 @@ export const superadminApi = {
         }
     }
 };
+
+// ============================================
+// REPORTES DE AUDITORIA
+// ============================================
+export const reportesAPI = {
+    getAll: () => api.get('/restful/superadmin/reportes'),
+    getBySuperAdmin: (id) => api.get(`/restful/superadmin/reportes/superadmin/${id}`),
+};

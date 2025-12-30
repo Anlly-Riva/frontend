@@ -241,8 +241,8 @@ const DashboardSuperAdminPage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Últimos Restaurantes */}
                 <ChartContainer title="🏪 Últimos Restaurantes Registrados">
-                    <div className="space-y-3 overflow-y-auto h-full pr-2">
-                        {restaurantes.slice(0, 5).map((rest, index) => (
+                    <div className="space-y-3 overflow-y-auto pr-2" style={{ maxHeight: '400px' }}>
+                        {restaurantes.map((rest, index) => (
                             <div
                                 key={rest.id_restaurante || rest.idRestaurante || index}
                                 className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-100 last:border-0"
@@ -252,7 +252,7 @@ const DashboardSuperAdminPage = () => {
                                         <FaStore />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-medium text-gray-900">{rest.razon_social}</p>
+                                        <p className="text-sm font-medium text-gray-900">{rest.nombre}</p>
                                         <p className="text-xs text-gray-500">RUC: {rest.ruc}</p>
                                     </div>
                                 </div>
@@ -272,8 +272,8 @@ const DashboardSuperAdminPage = () => {
 
                 {/* Últimos Clientes */}
                 <ChartContainer title="👥 Últimos Clientes Registrados">
-                    <div className="space-y-3 overflow-y-auto h-full pr-2">
-                        {usuarios.slice(0, 5).map((user, index) => (
+                    <div className="space-y-3 overflow-y-auto pr-2" style={{ maxHeight: '400px' }}>
+                        {usuarios.map((user, index) => (
                             <div
                                 key={user.idUsuario || user.id_usuario || index}
                                 className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-100 last:border-0"

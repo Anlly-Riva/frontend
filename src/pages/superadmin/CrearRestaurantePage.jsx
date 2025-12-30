@@ -129,14 +129,47 @@ const CrearRestaurantePage = () => {
         e.preventDefault();
         setLoading(true);
         const formData = new FormData(e.target);
-        const data = Object.fromEntries(formData.entries());
+        const rawData = Object.fromEntries(formData.entries());
 
         // Validación de RUC
-        if (data.ruc.length !== 11) {
+        if (rawData.ruc.length !== 11) {
             toast.error('El RUC debe tener 11 dígitos');
             setLoading(false);
             return;
         }
+
+        // Formato estricto de fechas: yyyy-MM-dd HH:mm:ss
+        const formatForApi = (dateString) => {
+            if (!dateString) return null;
+            return dateString.replace('T', ' ') + ':00';
+        };
+
+        const fechaCreacionFormatted = formatForApi(rawData.fecha_creacion);
+        const fechaVencimientoFormatted = formatForApi(rawData.fecha_vencimiento);
+
+        // ENVIAR AMBOS FORMATOS (snake_case y camelCase) para asegurar que el Backend lo lea
+        const data = {
+            ...rawData,
+            // Claves en snake_case (según tu JSON de ejemplo)
+            fecha_creacion: fechaCreacionFormatted,
+            fecha_vencimiento: fechaVencimientoFormatted,
+            email_contacto: rawData.email_contacto,
+            direccion_principal: rawData.direccion_principal, // Explicit snake_case
+            logo_url: rawData.logo_url,
+            tasa_igv: rawData.tasa_igv,
+            simbolo_moneda: rawData.simbolo_moneda,
+
+            // Claves en camelCase (estándar Java Spring Boot)
+            fechaCreacion: fechaCreacionFormatted,
+            fechaVencimiento: fechaVencimientoFormatted,
+            emailContacto: rawData.email_contacto,
+            direccionPrincipal: rawData.direccion_principal,
+
+            // Explicitly set these too just in case
+            logoUrl: rawData.logo_url,
+            tasaIgv: rawData.tasa_igv,
+            simboloMoneda: rawData.simbolo_moneda
+        };
 
         mutation.mutate(data);
     };
@@ -189,6 +222,45 @@ const CrearRestaurantePage = () => {
                                     placeholder="20123456789"
                                 />
                                 <p className="text-xs text-gray-500 mt-1">11 dígitos numéricos</p>
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    <span>Email de Contacto</span> <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    name="email_contacto"
+                                    type="email"
+                                    required
+                                    className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    placeholder="contacto@restaurante.com"
+                                />
+                            </div>
+                            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        <span>Fecha de Creación</span> <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        name="fecha_creacion"
+                                        type="datetime-local"
+                                        required
+                                        defaultValue={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
+                                        className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Formato estricto: yyyy-MM-dd HH:mm:ss</p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        <span>Fecha de Vencimiento</span> <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        name="fecha_vencimiento"
+                                        type="datetime-local"
+                                        required
+                                        defaultValue={new Date(new Date().setFullYear(new Date().getFullYear() + 1) - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
+                                        className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
+                                </div>
                             </div>
                             {/* Campo Moneda removido - no existe en la BD */}
                             <div>
