@@ -37,7 +37,7 @@ const CrearRestaurantePage = () => {
                 } catch (primaryErr) {
                     // Silent fallback - try anonymous
                     try {
-                        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9090';
+                        const API_URL = import.meta.env.VITE_API_URL || 'http://comidas.spring.informaticapp.com:2052';
                         const response = await fetch(`${API_URL}/restful/sucursales`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -53,7 +53,7 @@ const CrearRestaurantePage = () => {
                 // Final fallback: Nested POST
                 if (!createdBranchId) {
                     try {
-                        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9090';
+                        const API_URL = import.meta.env.VITE_API_URL || 'http://comidas.spring.informaticapp.com:2052';
                         const nestedUrl = `${API_URL}/restful/restaurantes/${newRestaurante.id_restaurante}/sucursales`;
                         const response = await fetch(nestedUrl, {
                             method: 'POST',
@@ -105,7 +105,7 @@ const CrearRestaurantePage = () => {
             // Navigate to Create Client with PRE-FILLED data
             const params = new URLSearchParams();
             params.append('idRestaurante', data.id_restaurante);
-            params.append('razonSocial', data.razon_social);
+            params.append('nombre', data.nombre);
             if (data.createdSucursalId) {
                 params.append('idSucursal', data.createdSucursalId);
             }
@@ -167,10 +167,10 @@ const CrearRestaurantePage = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    <span>Razón Social</span> <span className="text-red-500">*</span>
+                                    <span>Nombre del Restaurante</span> <span className="text-red-500">*</span>
                                 </label>
                                 <input
-                                    name="razon_social"
+                                    name="nombre"
                                     required
                                     className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                     placeholder="Ej: Restaurante El Buen Sabor S.A.C."
@@ -190,19 +190,7 @@ const CrearRestaurantePage = () => {
                                 />
                                 <p className="text-xs text-gray-500 mt-1">11 dígitos numéricos</p>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Moneda
-                                </label>
-                                <select
-                                    name="moneda"
-                                    defaultValue="PEN"
-                                    className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                                >
-                                    <option value="PEN">Soles (PEN)</option>
-                                    <option value="USD">Dólares (USD)</option>
-                                </select>
-                            </div>
+                            {/* Campo Moneda removido - no existe en la BD */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Símbolo Moneda

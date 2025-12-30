@@ -49,7 +49,7 @@ const RestaurantesPage = () => {
             const usuario = getUsuarioRelacionado(r);
             const searchLower = searchTerm.toLowerCase();
             return (
-                r.razon_social?.toLowerCase().includes(searchLower) ||
+                r.nombre?.toLowerCase().includes(searchLower) ||
                 r.ruc?.includes(searchTerm) ||
                 usuario?.nombreUsuario?.toLowerCase().includes(searchLower) ||
                 usuario?.nombreUsuarioLogin?.toLowerCase().includes(searchLower)
@@ -165,7 +165,7 @@ const RestaurantesPage = () => {
                                     <div className="flex items-center space-x-3">
                                         <FaStore className="text-2xl" />
                                         <div className="flex-1">
-                                            <h3 className="font-bold text-lg">{restaurante.razon_social}</h3>
+                                            <h3 className="font-bold text-lg">{restaurante.nombre}</h3>
                                             <p className="text-xs text-blue-100">RUC: {restaurante.ruc}</p>
                                         </div>
                                     </div>
@@ -188,7 +188,7 @@ const RestaurantesPage = () => {
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-600">Moneda:</span>
-                                        <span className="font-medium text-gray-900">{restaurante.moneda} ({restaurante.simbolo_moneda})</span>
+                                        <span className="font-medium text-gray-900">{restaurante.simbolo_moneda || 'S/'}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-600">IGV:</span>
@@ -226,7 +226,7 @@ const RestaurantesPage = () => {
                         <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-6 text-white flex justify-between items-center sticky top-0 z-10">
                             <h2 className="text-2xl font-bold flex items-center gap-3">
                                 <FaStore className="text-yellow-300" />
-                                {selectedRestaurante.razon_social}
+                                {selectedRestaurante.nombre}
                             </h2>
                             <button
                                 onClick={() => setSelectedRestaurante(null)}
@@ -281,7 +281,7 @@ const RestaurantesPage = () => {
                                     <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2">
                                         <FaStore className="text-blue-500" /> Información General
                                     </h3>
-                                    <DetailItem icon={<FaStore />} label="Razón Social" value={selectedRestaurante.razon_social} />
+                                    <DetailItem icon={<FaStore />} label="Nombre" value={selectedRestaurante.nombre} />
                                     <DetailItem icon={<FaStore />} label="RUC" value={selectedRestaurante.ruc} />
 
                                     {isEditing ? (
@@ -306,7 +306,7 @@ const RestaurantesPage = () => {
                                     <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2">
                                         <FaMoneyBillWave className="text-green-500" /> Configuración
                                     </h3>
-                                    <DetailItem icon={<FaMoneyBillWave />} label="Moneda" value={`${selectedRestaurante.moneda} (${selectedRestaurante.simbolo_moneda})`} />
+                                    <DetailItem icon={<FaMoneyBillWave />} label="Moneda" value={selectedRestaurante.simbolo_moneda || 'S/'} />
 
                                     {isEditing ? (
                                         <div className="space-y-1">
