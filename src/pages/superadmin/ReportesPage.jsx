@@ -104,7 +104,7 @@ const ReportesPage = () => {
                                     <th className="px-6 py-4">Acción</th>
                                     <th className="px-6 py-4">Detalle</th>
                                     <th className="px-6 py-4">Admin</th>
-                                    {/* Search Bar <th className="px-6 py-4 text-center">IP</th>*/}
+                                    <th className="px-6 py-4 text-center">IP</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
