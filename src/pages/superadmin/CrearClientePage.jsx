@@ -139,6 +139,11 @@ const CrearClientePage = () => {
             estado: 1, // Default active
 
             // Map keys to match Database/Entity structure
+            // Fix: Backend likely expects idPerfil or id_perfil instead of rolId
+            idPerfil: parseInt(rawData.rolId),
+            id_perfil: parseInt(rawData.rolId),
+            perfilId: parseInt(rawData.rolId),
+
             // DB: apellido_usuario -> Java: apellidoUsuario
             apellidoUsuario: rawData.apellidos,
             apellido_usuario: rawData.apellidos,
@@ -183,9 +188,9 @@ const CrearClientePage = () => {
         // Remove form-only fields
         delete data.idSucursalManual;
         delete data.idRestaurantSelection;
-        delete data.apellidos; // cleanup
-        delete data.telefono; // cleanup
-        delete data.contrasena; // cleanup
+        // REMOVED: delete data.apellidos; (Backend uses 'apellidos')
+        // REMOVED: delete data.telefono; (Backend uses 'telefono')
+        // REMOVED: delete data.contrasena; (Backend uses 'contrasena')
 
         mutation.mutate(data);
     };
